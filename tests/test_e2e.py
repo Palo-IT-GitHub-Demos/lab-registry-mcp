@@ -25,14 +25,14 @@ SKIP = pytest.mark.skipif(
 )
 
 
-async def _call_server(tool: str, args: dict) -> dict:
+async def _call_server(tool: str, args: dict, registry_path: str = REGISTRY_PATH) -> dict | list:
     """Spawn the MCP server and call one tool via stdio JSON-RPC."""
     proc = await asyncio.create_subprocess_exec(
         MCP_BIN, "run", SERVER_SCRIPT,
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.DEVNULL,
-        env={**os.environ, "REGISTRY_PATH": REGISTRY_PATH},
+        env={**os.environ, "REGISTRY_PATH": registry_path},
         limit=8 * 1024 * 1024,  # 8 MB — large list_entries responses can exceed default 64 KB
     )
 
@@ -50,23 +50,39 @@ async def _call_server(tool: str, args: dict) -> dict:
                 "params": {"protocolVersion": "2024-11-05",
                            "capabilities": {},
                            "clientInfo": {"name": "e2e-test", "version": "0.1"}}})
-    init_resp = await recv()
-
+    await recv()
     await send({"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}})
 
     # Call the tool
     await send({"jsonrpc": "2.0", "id": 2, "method": "tools/call",
                 "params": {"name": tool, "arguments": args}})
-    result = await recv()
+    raw = await recv()
 
     proc.stdin.close()
     proc.kill()
     await proc.wait()
 
-    assert "error" not in result, f"Server returned error: {result.get('error')}"
-    content = result["result"]["content"]
-    # FastMCP 1.28 serialises list[dict] as N separate content items, one per element.
-    # A single dict/scalar is returned as one content item.
+    if "error" in raw:
+        raise RuntimeError(f"JSON-RPC error: {raw['error']}")
+
+    result_body = raw["result"]
+
+    # FastMCP 1.28 sets isError=true and puts the message in content[0]["text"]
+    if result_body.get("isError"):
+        msg = (result_body.get("content") or [{}])[0].get("text", "unknown tool error")
+        raise RuntimeError(msg)
+
+    # FastMCP 1.28 also returns structuredContent — use it when present (more reliable)
+    if "structuredContent" in result_body:
+        return result_body["structuredContent"].get("result", result_body["structuredContent"])
+
+    # Fallback: parse content items
+    # - empty list   → content: []
+    # - list[dict]   → N separate content items, one per element
+    # - scalar/dict  → 1 content item with JSON text
+    content = result_body.get("content", [])
+    if len(content) == 0:
+        return []
     if len(content) > 1:
         return [json.loads(item["text"]) for item in content]
     return json.loads(content[0]["text"])
@@ -98,6 +114,14 @@ async def test_e2e_list_entries_filter_plugin():
     result = await _call_server("list_entries", {"plugin": "android"})
     assert all(r["plugin"] == "android" for r in result)
     assert len(result) >= 14
+
+
+@SKIP
+@pytest.mark.asyncio
+async def test_e2e_list_entries_empty_result():
+    """FastMCP returns content:[] for empty list — must not crash."""
+    result = await _call_server("list_entries", {"tags": ["no-such-tag-xyz"]})
+    assert result == []
 
 
 @SKIP
@@ -153,6 +177,14 @@ async def test_e2e_check_compliance_outdated():
     ]})
     assert len(result["outdated"]) == 1
     assert result["outdated"][0]["current_version"] == "0.1.0"
+
+
+@SKIP
+@pytest.mark.asyncio
+async def test_e2e_missing_registry_raises():
+    """REGISTRY_PATH misconfigured → server returns isError:true → RuntimeError."""
+    with pytest.raises(RuntimeError, match="REGISTRY_PATH"):
+        await _call_server("list_entries", {}, registry_path="")
 
 
 # ---------------------------------------------------------------------------
