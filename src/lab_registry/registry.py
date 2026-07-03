@@ -164,7 +164,7 @@ def _load_plugin_entries(
 
     agents_dir = plugin_dir / "agents"
     if agents_dir.exists():
-        for agent_file in sorted(agents_dir.glob("*.agent.md")):
+        for agent_file in sorted(agents_dir.glob("*.md")):  # catches both *.agent.md and *.md
             entry = _load_agent(plugin_name, version, updated_at, tags, agent_file, root)
             if entry:
                 entries.append(entry)
