@@ -38,15 +38,18 @@ def _parse_frontmatter(content: str) -> tuple[dict, str]:
     return metadata, match.group(2).strip()
 
 
+def _parse_updated_at(text: str) -> str | None:
+    """Extract the most recent version date from CHANGELOG.md text (best effort)."""
+    match = re.search(r"##\s+\[[^\]]+\]\s+[—–-]+\s+(\d{4}-\d{2}-\d{2})", text)
+    return match.group(1) if match else None
+
+
 def _extract_updated_at(plugin_dir: Path) -> str | None:
-    """Parse the most recent version date from CHANGELOG.md (best effort)."""
+    """Parse the most recent version date from CHANGELOG.md file (best effort)."""
     changelog = plugin_dir / "CHANGELOG.md"
     if not changelog.exists():
         return None
-    content = changelog.read_text(encoding="utf-8")
-    # Handles em dash (—), en dash (–), or hyphen (-)
-    match = re.search(r"##\s+\[[^\]]+\]\s+[—–-]+\s+(\d{4}-\d{2}-\d{2})", content)
-    return match.group(1) if match else None
+    return _parse_updated_at(changelog.read_text(encoding="utf-8"))
 
 
 # ---------------------------------------------------------------------------
@@ -189,9 +192,8 @@ def _load_plugin_entries(
 # Public API
 # ---------------------------------------------------------------------------
 
-@lru_cache(maxsize=1)
-def load_registry() -> tuple[list[RegistryEntry], dict[str, Plugin]]:
-    """Load and index all entries from REGISTRY_PATH. Cached after first call."""
+def _load_registry_local() -> tuple[list[RegistryEntry], dict[str, Plugin]]:
+    """Load and index all entries from the local REGISTRY_PATH filesystem."""
     root = get_registry_path()
     marketplace_file = root / ".claude-plugin" / "marketplace.json"
     if not marketplace_file.exists():
@@ -242,6 +244,15 @@ def load_registry() -> tuple[list[RegistryEntry], dict[str, Plugin]]:
     return all_entries, plugins
 
 
+@lru_cache(maxsize=1)
+def load_registry() -> tuple[list[RegistryEntry], dict[str, Plugin]]:
+    """Load and index all entries. Uses REGISTRY_GITHUB_REPO if set, else REGISTRY_PATH."""
+    if os.environ.get("REGISTRY_GITHUB_REPO"):
+        from lab_registry.registry_github import load_registry_from_github  # noqa: PLC0415
+        return load_registry_from_github()
+    return _load_registry_local()
+
+
 def get_all_entries() -> list[RegistryEntry]:
     entries, _ = load_registry()
     return entries
@@ -259,5 +270,8 @@ def find_entry(plugin: str, type_: str, name: str) -> RegistryEntry | None:
 
 def get_entry_content(entry: RegistryEntry) -> tuple[dict, str]:
     """Read the entry's source file and return (parsed_frontmatter, markdown_body)."""
+    if os.environ.get("REGISTRY_GITHUB_REPO"):
+        from lab_registry.registry_github import fetch_entry_content_github  # noqa: PLC0415
+        return fetch_entry_content_github(entry)
     file_path = get_registry_path() / entry.path
     return _parse_frontmatter(file_path.read_text(encoding="utf-8"))
