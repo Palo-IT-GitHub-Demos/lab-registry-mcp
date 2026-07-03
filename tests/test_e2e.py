@@ -188,6 +188,126 @@ async def test_e2e_missing_registry_raises():
 
 
 # ---------------------------------------------------------------------------
+# Day 3: artifact type coverage, combined filters, contract invariants
+# ---------------------------------------------------------------------------
+
+@SKIP
+@pytest.mark.asyncio
+async def test_e2e_get_entry_agent():
+    """get_entry for an agent must return agent_skills list and non-empty content."""
+    result = await _call_server("get_entry", {
+        "plugin": "android", "type": "agent", "name": "android-architect"
+    })
+    assert "error" not in result
+    assert result["entry"]["type"] == "agent"
+    assert result["entry"]["name"] == "android-architect"
+    assert isinstance(result["entry"]["agent_skills"], list)
+    assert len(result["content_raw"]) > 0
+
+
+@SKIP
+@pytest.mark.asyncio
+async def test_e2e_get_entry_command():
+    """get_entry for a command must return the entry with content."""
+    result = await _call_server("get_entry", {
+        "plugin": "android", "type": "command", "name": "add-screen"
+    })
+    assert "error" not in result
+    assert result["entry"]["type"] == "command"
+    assert result["entry"]["name"] == "add-screen"
+    assert len(result["content_raw"]) > 0
+
+
+@SKIP
+@pytest.mark.asyncio
+async def test_e2e_get_entry_hook():
+    """get_entry for a hook must return the hook_events list."""
+    result = await _call_server("get_entry", {
+        "plugin": "android", "type": "hook", "name": "hooks"
+    })
+    assert "error" not in result
+    assert result["entry"]["type"] == "hook"
+    assert isinstance(result["entry"]["hook_events"], list)
+    assert len(result["entry"]["hook_events"]) > 0
+
+
+@SKIP
+@pytest.mark.asyncio
+async def test_e2e_get_entry_not_found_returns_error_key():
+    """A missing entry must return {"error": "..."} — not raise a RuntimeError."""
+    result = await _call_server("get_entry", {
+        "plugin": "android", "type": "skill", "name": "does-not-exist-xyz"
+    })
+    assert "error" in result
+    assert isinstance(result["error"], str)
+
+
+@SKIP
+@pytest.mark.asyncio
+async def test_e2e_list_entries_filter_agent():
+    result = await _call_server("list_entries", {"type": "agent"})
+    assert isinstance(result, list)
+    assert len(result) >= 5
+    assert all(r["type"] == "agent" for r in result)
+
+
+@SKIP
+@pytest.mark.asyncio
+async def test_e2e_list_entries_combined_plugin_and_type_filter():
+    """plugin + type filters must return their intersection."""
+    result = await _call_server("list_entries", {"plugin": "android", "type": "agent"})
+    assert isinstance(result, list)
+    assert len(result) >= 5
+    assert all(r["plugin"] == "android" for r in result)
+    assert all(r["type"] == "agent" for r in result)
+
+
+@SKIP
+@pytest.mark.asyncio
+async def test_e2e_search_entries_with_type_filter():
+    result = await _call_server("search_entries", {"query": "android", "type": "skill"})
+    assert isinstance(result, list)
+    assert len(result) >= 5
+    assert all(r["type"] == "skill" for r in result)
+
+
+@SKIP
+@pytest.mark.asyncio
+async def test_e2e_all_entry_keys_present_in_list_entries():
+    """Every entry returned by list_entries must carry all documented fields."""
+    expected_keys = {
+        "id", "name", "type", "plugin", "plugin_version", "description",
+        "path", "updated_at", "tags", "disable_model_invocation", "model",
+        "allowed_tools", "context", "agent_skills", "argument_hint", "hook_events",
+    }
+    result = await _call_server("list_entries", {"type": "skill"})
+    for entry in result[:5]:  # first 5 is enough
+        missing = expected_keys - set(entry.keys())
+        assert missing == set(), f"Entry '{entry.get('id')}' missing keys: {missing}"
+
+
+@SKIP
+@pytest.mark.asyncio
+async def test_e2e_check_compliance_count_math():
+    """up_to_date_count + outdated + unknown must equal len(input entries)."""
+    payload = [
+        {"name": "android-architecture", "type": "skill",
+         "plugin": "android", "local_version": "0.1.0"},    # up-to-date
+        {"name": "android-architect", "type": "agent",
+         "plugin": "android", "local_version": "0.1.0"},    # up-to-date
+        {"name": "android-architecture", "type": "skill",
+         "plugin": "android", "local_version": "0.0.0"},    # outdated
+        {"name": "ghost-entry-xyz", "type": "skill",
+         "plugin": "android", "local_version": "1.0.0"},    # unknown
+    ]
+    result = await _call_server("check_compliance", {"entries": payload})
+    total = result["up_to_date_count"] + len(result["outdated"]) + len(result["unknown"])
+    assert total == len(payload)
+    assert len(result["unknown"]) == 1
+    assert result["unknown"][0]["name"] == "ghost-entry-xyz"
+
+
+# ---------------------------------------------------------------------------
 # Standalone runner
 # ---------------------------------------------------------------------------
 

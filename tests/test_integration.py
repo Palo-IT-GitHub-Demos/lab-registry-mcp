@@ -117,3 +117,105 @@ def test_server_tools_registered():
     tool_names = {t.name for t in tools}
     expected = {"list_entries", "search_entries", "get_entry", "get_plugin", "check_compliance"}
     assert tool_names == expected, f"Registered tools: {tool_names}"
+
+
+# ===========================================================================
+# Day 3 additions: artifact type coverage, ID format, handler integration
+# ===========================================================================
+
+@skip_if_no_registry
+def test_real_all_four_artifact_types_present(real_entries):
+    """The real marketplace must contain at least one entry of every artifact type."""
+    from lab_registry.models import ArtifactType
+    entries, _ = real_entries
+    found_types = {e.type for e in entries}
+    for expected_type in ArtifactType:
+        assert expected_type in found_types, f"No entries of type '{expected_type}' found"
+
+
+@skip_if_no_registry
+def test_real_entry_id_format(real_entries):
+    """Every entry ID must follow '{plugin}/{type}/{name}' exactly."""
+    entries, _ = real_entries
+    for e in entries:
+        parts = e.id.split("/")
+        assert len(parts) == 3, f"Bad ID: {e.id}"
+        assert parts[0] == e.plugin, f"ID plugin mismatch: {e.id}"
+        assert parts[1] == e.type, f"ID type mismatch: {e.id}"
+        assert parts[2] == e.name, f"ID name mismatch: {e.id}"
+
+
+@skip_if_no_registry
+def test_real_command_has_argument_hint(real_entries):
+    """At least one command in the real registry must carry an argument_hint."""
+    entries, _ = real_entries
+    commands = [e for e in entries if e.type == "command"]
+    assert len(commands) > 0, "No command entries found"
+    hints = [e for e in commands if e.argument_hint]
+    assert len(hints) > 0, f"No command has argument_hint (checked {len(commands)} commands)"
+
+
+@skip_if_no_registry
+def test_real_hook_has_non_empty_hook_events(real_entries):
+    """Every hook entry must list at least one event type."""
+    entries, _ = real_entries
+    hooks = [e for e in entries if e.type == "hook"]
+    assert len(hooks) > 0, "No hook entries found"
+    for h in hooks:
+        assert len(h.hook_events) > 0, f"Hook {h.id} has empty hook_events"
+
+
+@skip_if_no_registry
+def test_real_list_entries_combined_plugin_and_type_filter(real_entries):
+    """list_entries with both plugin and type filters must return their intersection."""
+    from lab_registry.tools.search import list_entries_handler
+    result = list_entries_handler(plugin="android", type="skill")
+    assert len(result) >= 5, f"Expected ≥5 android skills, got {len(result)}"
+    assert all(r["plugin"] == "android" for r in result), "Combined filter leaked non-android"
+    assert all(r["type"] == "skill" for r in result), "Combined filter leaked non-skill"
+
+
+@skip_if_no_registry
+def test_real_search_ranking_name_before_description(real_entries):
+    """Name matches must appear before description-only matches in search results."""
+    from lab_registry.tools.search import search_entries_handler
+    results = search_entries_handler(query="android")
+    if len(results) < 2:
+        pytest.skip("Not enough results to verify ranking")
+    name_positions = [i for i, r in enumerate(results) if "android" in r["name"]]
+    desc_positions = [i for i, r in enumerate(results) if "android" not in r["name"]]
+    if name_positions and desc_positions:
+        assert max(name_positions) < min(desc_positions), (
+            "Description-only matches appeared before name matches in real data"
+        )
+
+
+@skip_if_no_registry
+def test_real_get_plugin_handler_android(real_entries):
+    """get_plugin for 'android' must return a valid manifest and ≥14 entries."""
+    from lab_registry.tools.fetch import get_plugin_handler
+    result = get_plugin_handler(plugin="android")
+    assert "error" not in result
+    assert result["manifest"]["name"] == "android"
+    assert result["manifest"]["version"], "Android plugin must have a version"
+    assert len(result["entries"]) >= 14, f"Expected ≥14 android entries, got {len(result['entries'])}"
+
+
+@skip_if_no_registry
+def test_real_compliance_count_math(real_entries):
+    """up_to_date_count + outdated + unknown must equal input length for real data."""
+    from lab_registry.tools.compliance import check_compliance_handler
+    entries, plugins = real_entries
+    # Build a compliance payload mixing correct + incorrect versions
+    android_version = plugins["android"].version
+    test_payload = [
+        {"name": "android-architecture", "type": "skill", "plugin": "android",
+         "local_version": android_version},           # up-to-date
+        {"name": "android-architecture", "type": "skill", "plugin": "android",
+         "local_version": "0.0.0-old"},               # outdated
+        {"name": "ghost-entry", "type": "skill", "plugin": "android",
+         "local_version": "1.0.0"},                   # unknown
+    ]
+    result = check_compliance_handler(entries=test_payload)
+    total = result["up_to_date_count"] + len(result["outdated"]) + len(result["unknown"])
+    assert total == len(test_payload)
