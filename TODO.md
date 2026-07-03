@@ -1,7 +1,7 @@
 # TODO — Lab Registry Server
 
-> Critère de succès obligatoire : test croisé Claude Code + Copilot agent mode sur le même serveur (Jour 3).
-> Légende : ✅ fait · ⚠️ partiel · [ ] à faire
+> Critère de succès obligatoire : test croisé Claude Code + Copilot agent mode sur le même serveur.
+> Légende : ✅ fait · ⚠️ partiel · [ ] à faire · 🔴 bloquant · 🟡 moyen · 🟢 faible
 
 ---
 
@@ -37,116 +37,107 @@
 
 ---
 
-## Jour 3 — Interopérabilité Copilot agent mode (NON-NÉGOCIABLE)
+## Jour 3 — Tests + GitHub source mode ✅
 
-**Objectif** : les deux clients appellent les mêmes 5 outils sur le même serveur stdio.
+### Tests (121 → 137 tests, tous verts)
+- ✅ `tests/test_contract.py` (38 tests) — contrats de forme pour les 5 outils
+- ✅ `tests/test_registry.py` +17 — `_parse_frontmatter`, `_extract_updated_at`, cache lru
+- ✅ `tests/test_integration.py` +8 — 4 types d'artefacts, format ID, search ranking
+- ✅ `tests/test_e2e.py` +9 — get_entry agent/command/hook, filtres combinés, count math
 
-### Setup Copilot
-- ✅ `.vscode/mcp.json` créé dans gen-e2-marketplace
-- [ ] Vérifier que le serveur apparaît dans Copilot agent mode (nécessite VS Code ouvert)
-- [ ] Confirmer que les 5 tools sont visibles côté Copilot
+### GitHub source mode (plus de clone local nécessaire)
+- ✅ `registry_github.py` — fetche le tree GitHub (1 appel API) + fichiers via CDN
+- ✅ `registry.py` — dispatcher `load_registry()` et `get_entry_content()` selon env
+- ✅ `tests/test_registry_github.py` (16 tests) — HTTP entièrement mocké
+- ✅ `REGISTRY_GITHUB_REPO=owner/repo` active le mode GitHub
+- ✅ `REGISTRY_GITHUB_BRANCH` et `REGISTRY_GITHUB_TOKEN` supportés
+- ✅ `REGISTRY_PATH` reste disponible pour dev local et tests
 
-### Tests croisés (même requête, deux clients)
-- [ ] `list_entries type=skill` → même nombre de résultats Claude Code et Copilot
-- [ ] `get_entry plugin=delivery type=skill name=execute-plan` → même `content_raw`
-- [ ] `check_compliance` payload mixte → même réponse `outdated`/`unknown`
+### Configs mises à jour
+- ✅ `~/.claude/settings.json` → `REGISTRY_GITHUB_REPO` (plus de chemin local)
+- ✅ `~/Library/.../Code/User/mcp.json` → config user-level VS Code (tous les projets)
+- ✅ `REGISTRY_GITHUB_TOKEN` ajouté dans `mcp.json` pour l'accès au repo privé
+- ✅ `.env.example` documenté avec les 3 variables GitHub
+
+---
+
+## Jour 3 — Interopérabilité Copilot agent mode ⚠️ PARTIEL
+
+### Ce qui a été validé
+- ✅ Serveur démarre et tourne (`MCP: List Servers` → status: running)
+- ✅ Copilot agent mode appelle `list_entries` correctement (outil découvert et invoqué)
+- ✅ Le protocole JSON-RPC stdio fonctionne entre VS Code et le serveur
+
+### Bloqué — token GitHub en attente d'approbation
+- ⚠️ Fine-grained PAT créé mais **pending** (approbation org GLOBAL-PALO-IT requise)
+- ⚠️ Classic PAT à créer pour test immédiat (pas d'approbation org requise)
+- [ ] Une fois le token actif : retester `list_entries type=skill` → attendre ~39 résultats
+- [ ] Valider `get_entry`, `search_entries`, `check_compliance` via Copilot
+- [ ] Tester depuis Claude Code IDE (config en place, jamais validée depuis l'IDE)
 
 ### Documentation
-- [ ] Créer `TESTING.md` : protocole, clients, versions, résultats des 3 cas
-
-### Livrable vérifiable
-Log ou screenshot des deux clients retournant le même résultat sur `get_entry`.
+- [ ] Créer `TESTING.md` : protocole, clients, versions, résultats
 
 ---
 
-## Jour 4 — Polish + validation E2E
+## Jour 4 — Polish + publication (lundi)
 
-**Objectif** : le projet est livrable et maintenable.
+### Interopérabilité (priorité 1)
+- [ ] Obtenir un classic PAT GitHub (repo scope) → tester Copilot end-to-end
+- [ ] Tester depuis Claude Code IDE → confirmer `~/.claude/settings.json` fonctionnel
+- [ ] Capturer un screenshot ou log des deux clients appelant le même outil
 
 ### Robustesse
-- [ ] Gérer les plugins dont `source` pointe vers un dossier absent (log warning, ne pas crasher)
-- [ ] Gérer les SKILL.md sans frontmatter valide (retourner l'entrée avec `description: ""`)
+- [ ] Tester `reload_registry` stretch goal (vide le lru_cache → force re-fetch GitHub)
+- [ ] Vérifier comportement si repo GitHub inaccessible au démarrage (message d'erreur clair)
 
-### Config client finale
-- [ ] Valider la config Claude Code avec chemin absolu + venv Python depuis l'IDE
-- [ ] Tester un redémarrage du serveur (cache vidé, données rechargées)
+### Documentation finale
+- [ ] `TESTING.md` avec protocole reproductible
+- [ ] README mis à jour avec la nouvelle config GitHub source
 
-### Livrable vérifiable
-`pytest tests/ -v` vert + `TESTING.md` complété.
-
----
-
-## ⚠️ Inquiétudes et zones non vérifiées
-
-> Problèmes potentiels connus, non testés ou non confirmés. À surveiller activement.
-
-### 🔴 Critique — bloquant si ça échoue
-
-**1. Claude Code IDE ne voit pas le serveur MCP**
-- Config dans `~/.claude/settings.json`, mais jamais ouvert Claude Code pour confirmer
-- Risque : chemin absolu du venv incorrect, ou Claude Code ne charge pas les mcpServers user-level
-- Vérification : ouvrir Claude Code, taper `/mcp` ou vérifier le panneau MCP
-
-**2. Copilot agent mode ne voit pas le serveur**
-- `.vscode/mcp.json` créé dans gen-e2-marketplace, jamais testé dans VS Code
-- Risque : format `mcp.json` a changé dans une version récente de Copilot, ou le serveur stdio n'est pas supporté dans cette config
-- Vérification : ouvrir VS Code dans gen-e2-marketplace, chercher "lab-registry" dans Copilot agent tools
-
-### 🟡 Moyen — dégradation silencieuse
-
-**3. `updated_at: null` pour 4 plugins**
-- `html-presentation`, `migration-implementation-plan`, `go-tdd-orchestrator`, `figma-design-to-code` n'ont pas de CHANGELOG.md → `updated_at` est `null`
-- Impact : `check_compliance` fonctionne (version toujours présente), mais les clients qui affichent `updated_at` voient `null`
-- Non corrigé intentionnellement — gap documenté dans `.github/copilot-instructions.md`
-
-**4. `argument-hint` liste dans certains fichiers commands**
-- Trouvé et corrigé sur android, mais d'autres plugins pourraient avoir d'autres anomalies de frontmatter non vues
-- Test d'intégration `test_real_no_empty_descriptions` couvre les descriptions vides, mais pas tous les types de frontmatter malformé
-
-**5. Comportement de `lru_cache` après un `git pull` sur le marketplace**
-- Le cache n'est jamais invalidé automatiquement — si `gen-e2-marketplace` reçoit un commit pendant que le serveur tourne, les clients voient des données périmées
-- Mitigation prévue : outil `reload_registry` (stretch goal), mais non implémenté
-
-**6. Taille des réponses `list_entries` sans filtre**
-- 60 entrées × ~500 chars chacune ≈ 30 KB JSON. Testé avec buffer 8MB, pas de problème actuellement.
-- Si le marketplace grossit (200+ entrées), risque de timeout côté client MCP (Claude Code a des timeouts configurables)
-
-### 🟢 Faible — non critique
-
-**7. `search_entries` sans scoring de pertinence réel**
-- Ranking actuel : name match > description match. Pas de TF-IDF, pas de fuzzy search.
-- Acceptable pour 60 entrées. Devient problématique à 500+.
-
-**8. Standalone `test_e2e.py __main__` sans assertions**
-- Le runner standalone imprime les résultats mais ne valide pas les formes
-- Masquait les bugs de format FastMCP 1.28 lors de la première exécution
-- Pas corrigé (non prioritaire — pytest couvre tout)
+### Stretch : publication
+- [ ] Publier sur PyPI → permettre `uvx lab-registry-server` sans clone local
+- [ ] Config collègue universelle : `uvx lab-registry-server` + `REGISTRY_GITHUB_REPO`
 
 ---
 
-## Idées stretch (si le temps le permet)
+## ⚠️ Points de vigilance (mise à jour vendredi 4 juillet)
 
-### `reload_registry` — rechargement forcé du cache
-**Priorité : haute** — résout l'inquiétude n°5 ci-dessus.
+### 🔴 Bloquant
 
-```python
-@mcp.tool()
-def reload_registry() -> dict:
-    """Force reload the registry from REGISTRY_PATH.
-    Returns: added/removed/modified entry IDs vs previous state."""
-    old = {e.id: e.plugin_version for e in load_registry()[0]}
-    load_registry.cache_clear()
-    new = {e.id: e.plugin_version for e in load_registry()[0]}
-    return {
-        "added":    [id for id in new if id not in old],
-        "removed":  [id for id in old if id not in new],
-        "modified": [id for id in new if id in old and new[id] != old[id]],
-        "total":    len(new),
-    }
-```
+**1. Token GitHub en attente d'approbation org**
+- Fine-grained PAT créé, status "pending" sur GLOBAL-PALO-IT
+- Action requise lundi : créer un **classic PAT** (scope `repo`) ou demander l'approbation à un admin org
+- Le serveur fonctionne, le protocole fonctionne — seul l'accès au repo privé bloque
 
-### `list_plugins` — inventaire rapide
-Retourne les 13 plugins avec version + nombre d'artefacts par type.
+**2. Claude Code IDE jamais testé manuellement**
+- Config `~/.claude/settings.json` avec `REGISTRY_GITHUB_REPO` en place
+- Jamais ouvert Claude Code pour confirmer que le serveur apparaît dans `/mcp`
+- À tester lundi en priorité
+
+### 🟡 Moyen
+
+**3. Token GitHub en clair dans `mcp.json`**
+- Fichier `~/Library/.../Code/User/mcp.json` contient le token en clair
+- Token pending donc pas encore actif, mais à remplacer par un secret manager à terme
+- Solution court terme : utiliser `inputs` de VS Code MCP pour lire depuis le keychain
+
+**4. `updated_at: null` pour 4 plugins**
+- `html-presentation`, `migration-implementation-plan`, `go-tdd-orchestrator`, `figma-design-to-code` sans CHANGELOG.md
+- `check_compliance` fonctionne (version présente), mais `updated_at` est `null`
+
+**5. Cache GitHub non invalidé automatiquement**
+- Si `gen-e2-marketplace` reçoit un commit pendant que le serveur tourne → données périmées
+- Mitigation : redémarrer le serveur MCP ou implémenter `reload_registry`
+
+### 🟢 Faible
+
+**6. `search_entries` sans scoring de pertinence réel**
+- Ranking actuel : name match > description match. Acceptable pour 65 entrées.
+
+**7. Publication PyPI non faite**
+- Collègues ne peuvent pas utiliser le serveur sans cloner le repo localement
+- Bloqué intentionnellement — à faire après validation interopérabilité
 
 ### `get_entry_batch` — récupération groupée
 `get_entry_batch(entries: [{plugin, type, name}])` → liste complète en un seul appel.
