@@ -133,9 +133,9 @@
 **6. `search_entries` sans scoring de pertinence réel**
 - Ranking actuel : name match > description match. Acceptable pour 65 entrées.
 
-**7. Publication PyPI non faite**
-- Collègues ne peuvent pas utiliser le serveur sans cloner le repo localement
-- Bloqué intentionnellement — à faire après validation interopérabilité
+**7. Distribution GitHub non finalisée**
+- La cible finale est une installation via `pip install git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp`
+- Il reste à pousser le repo GitHub cible et valider l'installation distante dans un venv propre
 
 ### `get_entry_batch` — récupération groupée
 `get_entry_batch(entries: [{plugin, type, name}])` → liste complète en un seul appel.
@@ -272,3 +272,24 @@ Nécessite d'ajouter `context` comme paramètre de filtre dans `list_entries_han
 ### Export snapshot
 `export_snapshot()` → retourne tout le registre sérialisé en JSON (sans `content_raw`).
 Permet au client de cacher localement le registre et de ne faire `check_compliance` qu'au démarrage.
+
+---
+
+## Next step recommandé — Distribution GitHub (priorité haute)
+
+Objectif: rendre le serveur installable sans clone local via `pip install git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp`.
+
+### Plan exécutable
+
+- [x] Créer un runbook de distribution: `GITHUB_RELEASE.md`
+- [x] Ajouter un workflow GitHub Actions de CI/release: `.github/workflows/release.yml`
+- [ ] Pousser le repo vers `Palo-IT-GitHub-Demos/lab-registry-mcp`
+- [ ] Valider `pip install git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp`
+- [ ] Tagger `vX.Y.Z` pour une installation figée si nécessaire
+- [ ] Vérifier `lab-registry --help` après installation distante
+
+### Go/No-Go rapide
+
+- [ ] `pytest tests/ -v` vert
+- [ ] `python -m build` vert
+- [ ] `python -m twine check dist/*` vert

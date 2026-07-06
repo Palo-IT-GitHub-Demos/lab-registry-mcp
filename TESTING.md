@@ -37,7 +37,7 @@ REGISTRY_PATH=../gen-e2-marketplace pytest tests/ -v
 pytest tests/ -v
 ```
 
-Expected output: **137 passed**
+Expected output: **177 passed**
 
 ### By category
 
@@ -88,7 +88,7 @@ REGISTRY_PATH=../gen-e2-marketplace pytest tests/test_e2e.py -v
 ```
 Using the lab-registry tools, list all available skills
 ```
-Expected: table of ~36 skills grouped by plugin
+Expected: table of 43 skills grouped by plugin
 
 ```
 Using lab-registry, get the full content of the android-architecture skill
@@ -101,7 +101,7 @@ Check if these entries are up to date using lab-registry:
 ```
 Expected: `outdated` list with `current_version: 0.1.0`
 
-**Validation date**: 2026-07-06 ✅ — `list_entries type=skill` → 36 skills returned
+**Validation date**: 2026-07-06 ✅ — `list_entries type=skill` → 43 skills returned
 
 ---
 
@@ -114,7 +114,7 @@ Expected: `outdated` list with `current_version: 0.1.0`
 **Steps**
 1. Open any terminal directory
 2. Run `claude` to start an interactive session
-3. Type `/mcp` → verify `lab-registry · ✔ connected · 5 tools`
+3. Type `/mcp` → verify `lab-registry · ✔ connected · 12 tools`
 4. Ask:
 
 ```
@@ -127,7 +127,53 @@ Use the lab-registry tool to get the full content of the research skill
 ```
 Expected: structured response with `content_raw`
 
-**Validation date**: 2026-07-06 ✅ — `lab-registry · connected · 5 tools`
+**Validation date**: 2026-07-06 ✅ — `lab-registry · connected · 12 tools`
+
+---
+
+## Demo Script (Copy/Paste)
+
+Use these prompts as a quick acceptance demo in either Copilot Agent mode or Claude Code.
+
+```text
+Give me a summary of all available gen-e2 plugins
+```
+Expected: plugin list with versions and entry counts (`list_plugins` / `get_marketplace_stats`).
+
+```text
+List all gen-e2 agents available in the registry
+```
+Expected: all indexed agents (`list_entries` with `type=agent`).
+
+```text
+I need to write tests for a Go service. Which gen-e2 skills are relevant?
+```
+Expected: ranked suggestions with matched terms (`suggest_entries`).
+
+```text
+Get the full content of android/skill/android-architecture
+```
+Expected: parsed metadata + full markdown body (`get_entry_by_id`).
+
+```text
+Show me everything in the gen-e2 delivery plugin
+```
+Expected: plugin manifest + entry list (`get_plugin`).
+
+```text
+Check if these local entries are up to date and show me what changed in the plugin changelog
+```
+Expected: outdated/unknown entries (`check_compliance`) + full changelog (`get_changelog`).
+
+```text
+Validate this new skill markdown file against the gen-e2 schema
+```
+Expected: `valid`, `errors`, `warnings`, parsed frontmatter (`validate_entry`).
+
+```text
+Reload the gen-e2 registry and tell me what changed
+```
+Expected: diff with `added`, `removed`, `modified`, `total` (`reload_registry`).
 
 ---
 
@@ -138,7 +184,7 @@ any change to the server or registry.
 
 | Query | Expected result | Copilot | Claude Code |
 |---|---|---|---|
-| `list_entries type=skill` | ≥ 36 entries | ✅ | ✅ |
+| `list_entries type=skill` | 43 entries | ✅ | ✅ |
 | `get_entry android/skill/android-architecture` | `plugin_version: 0.1.0` | — | — |
 | `check_compliance` outdated entry | `current_version` present | — | — |
 

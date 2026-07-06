@@ -59,8 +59,17 @@ lab-registry-server/         ← this repo
 ## Install
 
 ```bash
-# Clone alongside gen-e2-marketplace
-git clone <this-repo> lab-registry-server
+# Install directly from GitHub
+pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp"
+
+# Or pin an explicit tag
+pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.1.0"
+```
+
+For local development:
+
+```bash
+git clone https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp lab-registry-server
 cd lab-registry-server
 
 python3 -m venv .venv
@@ -96,7 +105,7 @@ REGISTRY_PATH=../gen-e2-marketplace pytest tests/ -v
 
 ---
 
-## The 6 tools
+## The 12 tools
 
 ### `list_entries`
 List all registry entries. Returns a flat list of `RegistryEntry` objects.
@@ -241,6 +250,98 @@ Set `REGISTRY_PATH` to the local clone of the marketplace repo instead.
 
 ---
 
+## Usage examples
+
+These are natural-language prompts you can use from Copilot Agent mode or Claude Code.
+
+### 1) Discover what exists
+
+Prompt:
+```text
+Give me a summary of all available gen-e2 plugins
+```
+
+Typical tools used: `list_plugins` or `get_marketplace_stats`
+
+---
+
+### 2) Find entries by role or type
+
+Prompt:
+```text
+List all gen-e2 agents available in the registry
+```
+
+Typical tools used: `list_entries` with `type="agent"`
+
+---
+
+### 3) Get recommendations for a task
+
+Prompt:
+```text
+I need to write tests for a Go service. Which gen-e2 skills are relevant?
+```
+
+Typical tools used: `suggest_entries` (optionally cross-checked with `list_entries`)
+
+---
+
+### 4) Fetch full content by ID
+
+Prompt:
+```text
+Get the full content of android/skill/android-architecture
+```
+
+Typical tools used: `get_entry_by_id`
+
+---
+
+### 5) Inspect everything in one plugin
+
+Prompt:
+```text
+Show me everything in the gen-e2 delivery plugin
+```
+
+Typical tools used: `get_plugin`, then `get_entry_by_id` for complete raw content per entry
+
+---
+
+### 6) Explain version drift
+
+Prompt:
+```text
+Check if these local entries are up to date and show me what changed in the plugin changelog
+```
+
+Typical tools used: `check_compliance` then `get_changelog`
+
+---
+
+### 7) Validate a new contribution
+
+Prompt:
+```text
+Validate this new skill markdown file against the gen-e2 schema
+```
+
+Typical tools used: `validate_entry`
+
+---
+
+### 8) Refresh cache after marketplace updates
+
+Prompt:
+```text
+Reload the gen-e2 registry and tell me what changed
+```
+
+Typical tools used: `reload_registry`
+
+---
+
 ## Registry coverage
 
 Current state of `gen-e2-marketplace` as indexed:
@@ -299,11 +400,6 @@ GitHub tests use fully mocked HTTP — no network access required.
 - **`updated_at` is best-effort** — parsed from `CHANGELOG.md`; `null` if absent
 - **Cache on demand** — use `reload_registry` tool to refresh without restarting the server
 - **Hooks indexed one entry per plugin** — not per event type
-
-      "env": { "REGISTRY_PATH": "${workspaceFolder}" }
-    }
-  }
-}
 ```
 
 ## Tools
