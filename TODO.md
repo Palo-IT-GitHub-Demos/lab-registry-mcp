@@ -285,9 +285,14 @@ Objectif: rendre le serveur installable sans clone local via `pip install git+ht
 - [x] Créer un runbook de distribution: `GITHUB_RELEASE.md`
 - [x] Ajouter un workflow GitHub Actions de CI/release: `.github/workflows/release.yml`
 - [x] Pousser le repo vers `Palo-IT-GitHub-Demos/lab-registry-mcp`
-- [ ] Valider `pip install git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp`
+- [x] Valider `pip install git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp`
 - [ ] Tagger `vX.Y.Z` pour une installation figée si nécessaire
-- [ ] Vérifier `lab-registry --help` après installation distante
+- [x] Vérifier `lab-registry --help` après installation distante
+
+Résultat validé le 2026-07-06 dans un autre workspace macOS:
+- installation réussie dans `.venv`
+- distribution détectée: `lab-registry-server 0.1.0`
+- import Python valide: `lab_registry`
 
 ### Go/No-Go rapide
 

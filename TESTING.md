@@ -38,6 +38,11 @@ lab-registry --help
 
 Expected result: package installs successfully from GitHub and the `lab-registry` CLI is available.
 
+Validated on 2026-07-06:
+- Installation succeeded in a local virtual environment after macOS blocked system-wide install (PEP 668).
+- Installed distribution name: `lab-registry-server 0.1.0`
+- Import check: `python -c "import lab_registry; print('ok')"`
+
 ---
 
 ## Running the Test Suite
