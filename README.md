@@ -2,6 +2,12 @@
 
 MCP server exposing the Gen-e2 Lab Registry — skills, agents, commands, and hooks — to any MCP-compatible client (Claude Code, GitHub Copilot agent mode). Designed for the Innovation Lab at Palo IT Singapore.
 
+Canonical repository: `https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp`
+
+This repository contains only the MCP server.
+It does not embed the `gen-e2-marketplace` project, which remains the registry source of truth.
+In normal usage, the server reads that source directly from GitHub.
+
 ---
 
 ## What it does
@@ -69,8 +75,8 @@ pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.1.0
 For local development:
 
 ```bash
-git clone https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp lab-registry-server
-cd lab-registry-server
+git clone https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp
+cd lab-registry-mcp
 
 python3 -m venv .venv
 source .venv/bin/activate
@@ -81,11 +87,22 @@ pip install -e ".[dev]"
 
 ## Configure
 
+Default mode is GitHub-backed.
+You do not need a local `gen-e2-marketplace` clone unless you want offline development or local integration/E2E tests.
+
 `REGISTRY_PATH` must point to the `gen-e2-marketplace` repo root:
 
 ```bash
 export REGISTRY_PATH=/abs/path/to/gen-e2-marketplace
 # or copy .env.example → .env and set it there
+```
+
+Recommended GitHub mode:
+
+```bash
+export REGISTRY_GITHUB_REPO=GLOBAL-PALO-IT/gen-e2-marketplace
+# optional for private repo access or higher rate limits
+export REGISTRY_GITHUB_TOKEN=ghp_...
 ```
 
 ---

@@ -17,7 +17,9 @@ pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.1.0
 
 ## 0) Distribution model
 
+- Downloaded repository contents: MCP server only
 - Source of truth: GitHub repository `Palo-IT-GitHub-Demos/lab-registry-mcp`
+- Marketplace source: separate `GLOBAL-PALO-IT/gen-e2-marketplace` repository, fetched remotely by default
 - Installation path: `pip install git+https://...`
 - Optional release artifact: Git tag + GitHub Release with built wheel/sdist attached
 - No PyPI or TestPyPI publication
@@ -50,14 +52,13 @@ python -m twine check dist/*
 
 ---
 
-## 3) Push to GitHub
+## 3) Push updates to GitHub
 
 ```bash
-git remote add origin https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp.git
-git push -u origin main
+git push origin main
 ```
 
-If the repository already exists, just push the current branch.
+Repository already published: `https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp`
 
 ---
 
@@ -98,6 +99,8 @@ source /tmp/lab-registry-git/bin/activate
 pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp"
 lab-registry --help
 ```
+
+Expected result: GitHub install succeeds without cloning manually, and `lab-registry --help` exits successfully.
 
 ---
 

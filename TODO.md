@@ -133,9 +133,10 @@
 **6. `search_entries` sans scoring de pertinence réel**
 - Ranking actuel : name match > description match. Acceptable pour 65 entrées.
 
-**7. Distribution GitHub non finalisée**
-- La cible finale est une installation via `pip install git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp`
-- Il reste à pousser le repo GitHub cible et valider l'installation distante dans un venv propre
+**7. Distribution GitHub en place**
+- Le dépôt cible existe : `https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp`
+- Installation prévue pour les collègues : `pip install git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp`
+- Reste utile : valider l'installation distante dans un venv propre et tagger une première version figée
 
 ### `get_entry_batch` — récupération groupée
 `get_entry_batch(entries: [{plugin, type, name}])` → liste complète en un seul appel.
@@ -283,13 +284,13 @@ Objectif: rendre le serveur installable sans clone local via `pip install git+ht
 
 - [x] Créer un runbook de distribution: `GITHUB_RELEASE.md`
 - [x] Ajouter un workflow GitHub Actions de CI/release: `.github/workflows/release.yml`
-- [ ] Pousser le repo vers `Palo-IT-GitHub-Demos/lab-registry-mcp`
+- [x] Pousser le repo vers `Palo-IT-GitHub-Demos/lab-registry-mcp`
 - [ ] Valider `pip install git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp`
 - [ ] Tagger `vX.Y.Z` pour une installation figée si nécessaire
 - [ ] Vérifier `lab-registry --help` après installation distante
 
 ### Go/No-Go rapide
 
-- [ ] `pytest tests/ -v` vert
-- [ ] `python -m build` vert
-- [ ] `python -m twine check dist/*` vert
+- [x] `pytest tests/ -v` vert
+- [x] `python -m build` vert
+- [x] `python -m twine check dist/*` vert

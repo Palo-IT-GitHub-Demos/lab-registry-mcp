@@ -3,6 +3,9 @@
 This document describes how to run the test suite and how to manually verify
 end-to-end interoperability with both supported MCP clients.
 
+The downloadable GitHub repository contains only the MCP server.
+The `gen-e2-marketplace` clone is optional and only needed for local-source development or tests that explicitly exercise `REGISTRY_PATH`.
+
 ---
 
 ## Prerequisites
@@ -12,16 +15,28 @@ end-to-end interoperability with both supported MCP clients.
 | Python | ≥ 3.12 | `python3 --version` |
 | uv (package manager) | any | `uv --version` |
 | GitHub token | classic PAT, `repo` scope | needed for GitHub source mode |
-| gen-e2-marketplace clone | optional | only for local source mode |
+| gen-e2-marketplace clone | optional | only for local source mode and local integration/E2E tests |
 
 ### Setup
 
 ```bash
-cd lab-registry-server
+git clone https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp
+cd lab-registry-mcp
 uv venv .venv
 source .venv/bin/activate
 uv pip install -e ".[dev]"
 ```
+
+### Remote install smoke test
+
+```bash
+python3 -m venv /tmp/lab-registry-git
+source /tmp/lab-registry-git/bin/activate
+pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp"
+lab-registry --help
+```
+
+Expected result: package installs successfully from GitHub and the `lab-registry` CLI is available.
 
 ---
 
