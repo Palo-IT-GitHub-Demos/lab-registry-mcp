@@ -10,19 +10,30 @@ In normal usage, the server reads that source directly from GitHub.
 
 ---
 
-## What it does
+### What it does
 
-Two primary use cases:
+An MCP server connected to the gen-e2 plugins repository so an agent can access the library directly from VS Code.
 
-**1. Discovery** — a client that doesn't know what tools exist can list, filter, and search the registry, then fetch the full content of any skill or agent to materialise it in its own repo.
+### Who it helps
 
-**2. Compliance** — a client that already has tools locally sends its current inventory, and the server returns what is outdated (version drift) or unknown (not in the registry).
+Mainly Labs developers, especially people getting started with gen-e2.
+
+### Why it exists
+
+To make the gen-e2 library easier to discover, search, reuse, and keep up to date across projects.
+
+### Main use cases
+
+- Explore the gen-e2 artefact library more deeply
+- Search a specific plugin or artefact by name and reuse it quickly in the current project
+- Get suggestions for which gen-e2 artefacts are relevant to the current project or task
+- Detect new gen-e2 plugins, version drift, or recent modifications in the library
 
 ---
 
 ## How it works
 
-```
+```text
 gen-e2-marketplace/          ← source of truth (read-only, never written)
   .claude-plugin/
     marketplace.json         ← list of all 13 plugins with semver versions
@@ -38,7 +49,7 @@ gen-e2-marketplace/          ← source of truth (read-only, never written)
     delivery/ ...
     ...
 
-lab-registry-server/         ← this repo
+lab-registry-mcp/            ← this repo
   src/lab_registry/
     registry.py              ← reads marketplace on first call, caches result
     models.py                ← RegistryEntry, Plugin (Pydantic)
@@ -52,9 +63,10 @@ lab-registry-server/         ← this repo
 ```
 
 **Startup sequence:**
+
 1. MCP client (Claude Code or Copilot) spawns the server process via stdio
 2. Server responds to `initialize` — no files read yet
-3. On first tool call, `load_registry()` indexes `REGISTRY_PATH`: reads `marketplace.json`, walks each plugin directory, parses YAML frontmatter from every `.md` file, extracts `updated_at` from `CHANGELOG.md`
+3. On first tool call, `load_registry()` reads from either `REGISTRY_GITHUB_REPO` or `REGISTRY_PATH`, parses marketplace metadata, indexes plugin entries, and extracts `updated_at` from `CHANGELOG.md` when available
 4. Result is cached in memory (`lru_cache`) for the life of the process
 5. All subsequent tool calls use the in-memory index — no disk access except `get_entry` (reads file content on demand)
 
@@ -85,24 +97,77 @@ pip install -e ".[dev]"
 
 ---
 
-## Configure
+## Configuration
 
-Default mode is GitHub-backed.
-You do not need a local `gen-e2-marketplace` clone unless you want offline development or local integration/E2E tests.
+There are 3 practical ways to configure the source registry.
 
-`REGISTRY_PATH` must point to the `gen-e2-marketplace` repo root:
+### 1) GitHub source from `GLOBAL-PALO-IT/gen-e2-marketplace` (recommended when you have access)
+
+Use this when you can obtain a GitHub token with access to the official marketplace repository.
+
+```bash
+export REGISTRY_GITHUB_REPO=GLOBAL-PALO-IT/gen-e2-marketplace
+# optional but usually needed for private repo access
+export REGISTRY_GITHUB_TOKEN=ghp_...
+```
+
+### 2) GitHub source from your own fork (temporary workaround)
+
+Use this when access to the official repo token is difficult, but you can fork the marketplace into a personal or easier-to-access repository.
+
+```bash
+export REGISTRY_GITHUB_REPO=<your-user-or-org>/gen-e2-marketplace
+export REGISTRY_GITHUB_TOKEN=ghp_...
+```
+
+### 3) Local source from a clone of `gen-e2-marketplace`
+
+Use this for offline development, local debugging, or local integration/E2E tests.
 
 ```bash
 export REGISTRY_PATH=/abs/path/to/gen-e2-marketplace
 # or copy .env.example → .env and set it there
 ```
 
-Recommended GitHub mode:
+### Client setup
+
+Both Claude Code and Copilot use the same stdio server; only the client registration format changes.
+
+#### Claude Code CLI — user-level
 
 ```bash
-export REGISTRY_GITHUB_REPO=GLOBAL-PALO-IT/gen-e2-marketplace
-# optional for private repo access or higher rate limits
-export REGISTRY_GITHUB_TOKEN=ghp_...
+claude mcp add lab-registry --scope user \
+  -e REGISTRY_GITHUB_REPO=GLOBAL-PALO-IT/gen-e2-marketplace \
+  -e REGISTRY_GITHUB_TOKEN=ghp_... \
+  -- /abs/path/to/.venv/bin/mcp run /abs/path/to/src/lab_registry/server.py
+```
+
+If you use a fork or a local clone, replace the env vars accordingly.
+
+#### GitHub Copilot agent mode — `~/Library/Application Support/Code/User/mcp.json`
+
+```json
+{
+  "servers": {
+    "lab-registry": {
+      "type": "stdio",
+      "command": "/abs/path/to/.venv/bin/mcp",
+      "args": ["run", "/abs/path/to/src/lab_registry/server.py"],
+      "env": {
+        "REGISTRY_GITHUB_REPO": "GLOBAL-PALO-IT/gen-e2-marketplace",
+        "REGISTRY_GITHUB_TOKEN": "ghp_..."
+      }
+    }
+  }
+}
+```
+
+For local mode, replace the `env` block with:
+
+```json
+{
+  "REGISTRY_PATH": "/abs/path/to/gen-e2-marketplace"
+}
 ```
 
 ---
@@ -125,10 +190,11 @@ REGISTRY_PATH=../gen-e2-marketplace pytest tests/ -v
 ## The 12 tools
 
 ### `list_entries`
+
 List all registry entries. Returns a flat list of `RegistryEntry` objects.
 
 | Parameter | Type | Description |
-|-----------|------|-------------|
+| --------- | ---- | ----------- |
 | `type` | `string?` | Filter: `"skill"`, `"agent"`, `"command"`, or `"hook"` |
 | `plugin` | `string?` | Filter by plugin name (e.g. `"android"`) |
 | `tags` | `string[]?` | Filter by keywords — OR match (any tag must match) |
@@ -141,10 +207,11 @@ List all registry entries. Returns a flat list of `RegistryEntry` objects.
 ---
 
 ### `search_entries`
+
 Keyword search over name, description, and plugin name. Name matches are ranked above description matches.
 
 | Parameter | Type | Description |
-|-----------|------|-------------|
+| --------- | ---- | ----------- |
 | `query` | `string` | Search term |
 | `type` | `string?` | Optional type filter |
 
@@ -154,11 +221,28 @@ Keyword search over name, description, and plugin name. Name matches are ranked 
 
 ---
 
+### `suggest_entries`
+
+Task-oriented suggestion tool. Scores entries against a free-text task description and returns the most relevant matches.
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `query` | `string` | Task description or need |
+| `type` | `string?` | Optional type filter |
+| `limit` | `integer?` | Maximum number of results |
+
+```json
+{ "query": "I need to write tests for a Go service", "type": "skill", "limit": 5 }
+```
+
+---
+
 ### `get_entry`
+
 Fetch the full content of a specific entry. Returns structured metadata **and** the raw markdown body.
 
 | Parameter | Type | Description |
-|-----------|------|-------------|
+| --------- | ---- | ----------- |
 | `plugin` | `string` | Plugin name |
 | `type` | `string` | Artifact type |
 | `name` | `string` | Artifact name |
@@ -168,6 +252,7 @@ Fetch the full content of a specific entry. Returns structured metadata **and** 
 ```
 
 Response shape:
+
 ```json
 {
   "entry": { "id": "android/skill/android-architecture", "plugin_version": "0.1.0", ... },
@@ -178,8 +263,27 @@ Response shape:
 
 ---
 
+### `get_entry_by_id`
+
+Fetch one entry directly from its canonical ID.
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `id` | `string` | Entry ID in `plugin/type/name` format |
+
+```json
+{ "id": "android/skill/android-architecture" }
+```
+
+---
+
 ### `get_plugin`
+
 All entries for one plugin, plus its manifest.
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `plugin` | `string` | Plugin name |
 
 ```json
 { "plugin": "research-suite" }
@@ -189,7 +293,38 @@ Response: `{ "manifest": { "version": "1.0.1", ... }, "entries": [...] }`
 
 ---
 
+### `list_plugins`
+
+List all indexed plugins with version and per-type entry counts.
+
+Response includes plugin-level summary fields such as version, `updated_at`, and counts for skills, agents, commands, and hooks.
+
+---
+
+### `get_changelog`
+
+Return the raw `CHANGELOG.md` content for a plugin.
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `plugin` | `string` | Plugin name |
+
+```json
+{ "plugin": "delivery" }
+```
+
+---
+
+### `get_marketplace_stats`
+
+Return marketplace-level statistics: totals, counts by type, counts by plugin, and latest update information.
+
+Useful for dashboards, summaries, and quick health checks.
+
+---
+
 ### `check_compliance`
+
 Diff a client's local inventory against the registry. Each item must have `name`, `type`, `plugin`, and `local_version`.
 
 ```json
@@ -202,6 +337,7 @@ Diff a client's local inventory against the registry. Each item must have `name`
 ```
 
 Response:
+
 ```json
 {
   "outdated": [],
@@ -214,56 +350,26 @@ Response:
 
 ---
 
-### `reload_registry`
-Force reload the in-memory cache from its source (GitHub or local). Use after a marketplace update to get fresh data without restarting the server.
+### `validate_entry`
 
-Response: `{ "added": [...], "removed": [...], "modified": [...], "total": N }`
+Validate a skill, agent, or command markdown file structure against the expected schema.
+
+Typical output includes:
+
+- `valid`
+- `errors`
+- `warnings`
+- parsed frontmatter when available
+
+Useful before contributing a new artefact to the marketplace.
 
 ---
 
-## Client configuration
+### `reload_registry`
 
-> Both clients use **stdio transport** — no port, no HTTP.
+Force reload the in-memory cache from its source (GitHub or local). Use after a marketplace update to get fresh data without restarting the server.
 
-### GitHub source mode (recommended — no local clone required)
-
-Set `REGISTRY_GITHUB_REPO` to point directly at the marketplace repo.
-Optionally set `REGISTRY_GITHUB_TOKEN` for private repos (classic PAT, `repo` scope).
-
-**Claude Code CLI — user-level (applies to all projects)**
-
-```bash
-claude mcp add lab-registry --scope user \
-  -e REGISTRY_GITHUB_REPO=GLOBAL-PALO-IT/gen-e2-marketplace \
-  -e REGISTRY_GITHUB_TOKEN=ghp_... \
-  -- /abs/path/to/.venv/bin/mcp run /abs/path/to/src/lab_registry/server.py
-```
-
-**GitHub Copilot agent mode — `~/Library/Application Support/Code/User/mcp.json` (user-level, all projects)**
-
-```json
-{
-  "servers": {
-    "lab-registry": {
-      "type": "stdio",
-      "command": "/abs/path/to/.venv/bin/mcp",
-      "args": ["run", "/abs/path/to/src/lab_registry/server.py"],
-      "env": {
-        "REGISTRY_GITHUB_REPO": "GLOBAL-PALO-IT/gen-e2-marketplace",
-        "REGISTRY_GITHUB_TOKEN": "ghp_..."
-      }
-    }
-  }
-}
-```
-
-### Local source mode (development / offline)
-
-Set `REGISTRY_PATH` to the local clone of the marketplace repo instead.
-
-```json
-"env": { "REGISTRY_PATH": "/abs/path/to/gen-e2-marketplace" }
-```
+Response: `{ "added": [...], "removed": [...], "modified": [...], "total": N }`
 
 ---
 
@@ -417,21 +523,3 @@ GitHub tests use fully mocked HTTP — no network access required.
 - **`updated_at` is best-effort** — parsed from `CHANGELOG.md`; `null` if absent
 - **Cache on demand** — use `reload_registry` tool to refresh without restarting the server
 - **Hooks indexed one entry per plugin** — not per event type
-```
-
-## Tools
-
-| Tool | Description |
-|------|-------------|
-| `list_entries` | List entries — filter by type / plugin / tags |
-| `search_entries` | Keyword search over name + description |
-| `suggest_entries` | Multi-term scoring — find entries relevant to a task description |
-| `get_entry` | Full content: parsed metadata + raw markdown body |
-| `get_entry_by_id` | Direct lookup by `plugin/type/name` ID string |
-| `get_plugin` | All entries for one plugin + its manifest |
-| `list_plugins` | All plugins with version and per-type entry counts |
-| `get_changelog` | Full CHANGELOG.md for a plugin |
-| `get_marketplace_stats` | Dashboard: totals, by-type, by-plugin, last updated |
-| `check_compliance` | Diff local versions against registry |
-| `validate_entry` | Schema validation for skill/agent/command markdown files |
-| `reload_registry` | Clear cache and re-fetch from source, returns diff |

@@ -40,7 +40,7 @@ pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.1.0
 ## 2) Local validation commands
 
 ```bash
-cd lab-registry-server
+cd lab-registry-mcp
 source .venv/bin/activate
 
 pytest tests/ -v
@@ -49,6 +49,8 @@ python -m pip install --upgrade build twine
 python -m build
 python -m twine check dist/*
 ```
+
+If you cloned under another folder name, adapt the `cd` command accordingly.
 
 ---
 

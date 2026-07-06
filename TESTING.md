@@ -57,7 +57,8 @@ REGISTRY_PATH=../gen-e2-marketplace pytest tests/ -v
 pytest tests/ -v
 ```
 
-Expected output: **177 passed**
+Expected output with `REGISTRY_PATH` set: **177 passed**.
+Expected output without local clone: **142 passed, 35 skipped**.
 
 ### By category
 
