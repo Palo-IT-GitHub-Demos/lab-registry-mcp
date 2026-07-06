@@ -70,7 +70,7 @@
 - ✅ Protocole JSON-RPC stdio validé end-to-end avec un vrai client
 
 ### Reste à faire
-- [ ] Tester depuis **Claude Code IDE** (`/mcp` → `list_entries`)
+- ✅ Tester depuis **Claude Code CLI** → `lab-registry · connected · 5 tools`
 - [ ] Créer `TESTING.md` avec le protocole reproductible
 
 ---
@@ -105,10 +105,9 @@
 - Action requise lundi : créer un **classic PAT** (scope `repo`) ou demander l'approbation à un admin org
 - Le serveur fonctionne, le protocole fonctionne — seul l'accès au repo privé bloque
 
-**2. Claude Code IDE jamais testé manuellement**
-- Config `~/.claude/settings.json` avec `REGISTRY_GITHUB_REPO` en place
-- Jamais ouvert Claude Code pour confirmer que le serveur apparaît dans `/mcp`
-- À tester (Copilot validé ✅, Claude Code reste à confirmer)
+**1. Claude Code CLI — config à migrer vers fork**
+- Enregistré avec `claude mcp add --scope user` pointant sur `eturquet-palo-it/gen-e2-marketplace`
+- `~/.claude/settings.json` pointe encore sur `GLOBAL-PALO-IT` (sans token) → à mettre à jour ou ignorer (le registre CLI prime)
 
 ### 🟡 Moyen
 
