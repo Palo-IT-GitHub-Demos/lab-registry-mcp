@@ -36,11 +36,13 @@ lab-registry-server/         ← this repo
   src/lab_registry/
     registry.py              ← reads marketplace on first call, caches result
     models.py                ← RegistryEntry, Plugin (Pydantic)
-    server.py                ← FastMCP, 5 tools registered via @mcp.tool()
+    server.py                ← FastMCP, 12 tools registered via @mcp.tool()
     tools/
-      search.py              ← list_entries, search_entries
-      fetch.py               ← get_entry, get_plugin
+      search.py              ← list_entries, search_entries, suggest_entries
+      fetch.py               ← get_entry, get_plugin, get_entry_by_id, list_plugins, get_changelog
       compliance.py          ← check_compliance
+      stats.py               ← get_marketplace_stats
+      validate.py            ← validate_entry
 ```
 
 **Startup sequence:**
@@ -248,6 +250,7 @@ Current state of `gen-e2-marketplace` as indexed:
 | android | 0.1.0 | 14 | 9 | 9 | 1 |
 | architecture-reviewer | 0.1.0 | 4 | 1 | 0 | 0 |
 | delivery | 0.2.3 | 5 | 0 | 0 | 0 |
+| dev-workflow | 0.1.0 | 3 | 1 | 4 | 1 |
 | figma-design-to-code | 0.1.0 | 1 | 0 | 0 | 0 |
 | fortran77-explainer | 0.1.0 | 0 | 1 | 0 | 0 |
 | go-tdd-orchestrator | 0.1.0 | 1 | 1 | 0 | 0 |
@@ -258,9 +261,9 @@ Current state of `gen-e2-marketplace` as indexed:
 | migration-implementation-plan | 0.1.0 | 1 | 0 | 0 | 0 |
 | research-suite | 1.0.1 | 2 | 0 | 0 | 0 |
 | swift5-development-test-writer | 0.1.0 | 2 | 0 | 0 | 0 |
-| **Total** | | **39** | **12** | **9** | **1** |
+| **Total** | | **43** | **13** | **13** | **2** |
 
-**65 artefacts** indexed. `updated_at` is `null` for 4 plugins without `CHANGELOG.md`.
+**74 artefacts** indexed across 14 plugins. `updated_at` is `null` for 4 plugins without `CHANGELOG.md`.
 
 ---
 
@@ -269,15 +272,21 @@ Current state of `gen-e2-marketplace` as indexed:
 ```
 tests/
   conftest.py              # session fixture: mock registry with 1 plugin / 4 artefacts
-  test_registry.py         # unit: indexer parsing (8 tests)
-  test_tools_search.py     # unit: list_entries, search_entries (9 tests)
+  test_registry.py         # unit: indexer, parsers, cache (25 tests)
+  test_tools_search.py     # unit: list_entries, search_entries (11 tests)
   test_tools_fetch.py      # unit: get_entry, get_plugin (8 tests)
   test_tools_compliance.py # unit: check_compliance (6 tests)
-  test_integration.py      # real marketplace: 65 entries, IDs unique, files readable (7 tests)
-  test_e2e.py              # full MCP protocol via subprocess (10 tests, requires REGISTRY_PATH)
+  test_tools_reload.py     # unit: reload_registry (4 tests)
+  test_tools_new.py        # unit: 6 new tools — list_plugins, get_entry_by_id,
+                           #       get_changelog, get_marketplace_stats,
+                           #       suggest_entries, validate_entry (35 tests)
+  test_contract.py         # contract: response shapes for all tools (38 tests)
+  test_registry_github.py  # GitHub source mode (mocked HTTP, 16 tests)
+  test_integration.py      # real marketplace: IDs, content, handlers (15 tests)
+  test_e2e.py              # full MCP subprocess — all 12 tools (20 tests)
 ```
 
-**141 tests total, 0 failures.**
+**177 tests total, 0 failures.**
 E2E and integration tests are skipped if `REGISTRY_PATH` is not set.
 GitHub tests use fully mocked HTTP — no network access required.
 
@@ -303,7 +312,13 @@ GitHub tests use fully mocked HTTP — no network access required.
 |------|-------------|
 | `list_entries` | List entries — filter by type / plugin / tags |
 | `search_entries` | Keyword search over name + description |
+| `suggest_entries` | Multi-term scoring — find entries relevant to a task description |
 | `get_entry` | Full content: parsed metadata + raw markdown body |
+| `get_entry_by_id` | Direct lookup by `plugin/type/name` ID string |
 | `get_plugin` | All entries for one plugin + its manifest |
+| `list_plugins` | All plugins with version and per-type entry counts |
+| `get_changelog` | Full CHANGELOG.md for a plugin |
+| `get_marketplace_stats` | Dashboard: totals, by-type, by-plugin, last updated |
 | `check_compliance` | Diff local versions against registry |
+| `validate_entry` | Schema validation for skill/agent/command markdown files |
 | `reload_registry` | Clear cache and re-fetch from source, returns diff |
