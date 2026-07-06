@@ -61,22 +61,17 @@
 
 ---
 
-## Jour 3 — Interopérabilité Copilot agent mode ⚠️ PARTIEL
+## Jour 3 — Interopérabilité Copilot agent mode ✅
 
-### Ce qui a été validé
-- ✅ Serveur démarre et tourne (`MCP: List Servers` → status: running)
-- ✅ Copilot agent mode appelle `list_entries` correctement (outil découvert et invoqué)
-- ✅ Le protocole JSON-RPC stdio fonctionne entre VS Code et le serveur
+### Ce qui a été validé (lundi 6 juillet)
+- ✅ Serveur accessible depuis **n'importe quel projet VS Code** (config user-level)
+- ✅ Copilot agent mode appelle `list_entries` → 36 skills retournés depuis GitHub API
+- ✅ Classic PAT fonctionnel — token stocké dans `~/Library/.../Code/User/mcp.json`
+- ✅ Protocole JSON-RPC stdio validé end-to-end avec un vrai client
 
-### Bloqué — token GitHub en attente d'approbation
-- ⚠️ Fine-grained PAT créé mais **pending** (approbation org GLOBAL-PALO-IT requise)
-- ⚠️ Classic PAT à créer pour test immédiat (pas d'approbation org requise)
-- [ ] Une fois le token actif : retester `list_entries type=skill` → attendre ~39 résultats
-- [ ] Valider `get_entry`, `search_entries`, `check_compliance` via Copilot
-- [ ] Tester depuis Claude Code IDE (config en place, jamais validée depuis l'IDE)
-
-### Documentation
-- [ ] Créer `TESTING.md` : protocole, clients, versions, résultats
+### Reste à faire
+- [ ] Tester depuis **Claude Code IDE** (`/mcp` → `list_entries`)
+- [ ] Créer `TESTING.md` avec le protocole reproductible
 
 ---
 
@@ -113,7 +108,7 @@
 **2. Claude Code IDE jamais testé manuellement**
 - Config `~/.claude/settings.json` avec `REGISTRY_GITHUB_REPO` en place
 - Jamais ouvert Claude Code pour confirmer que le serveur apparaît dans `/mcp`
-- À tester lundi en priorité
+- À tester (Copilot validé ✅, Claude Code reste à confirmer)
 
 ### 🟡 Moyen
 
