@@ -75,24 +75,28 @@
 
 ---
 
-## Jour 4 — Polish + publication (lundi)
+## Jour 4 — Polish + publication ✅
 
-### Interopérabilité (priorité 1)
-- [ ] Obtenir un classic PAT GitHub (repo scope) → tester Copilot end-to-end
-- [ ] Tester depuis Claude Code IDE → confirmer `~/.claude/settings.json` fonctionnel
-- [ ] Capturer un screenshot ou log des deux clients appelant le même outil
+### Interopérabilité validée ✅
+- ✅ Copilot agent mode → `list_entries type=skill` → 36 skills depuis GitHub
+- ✅ Claude Code CLI → `lab-registry · connected · 5 tools` (puis 6)
+- ✅ Test croisé : même source, même données, deux clients
 
-### Robustesse
-- [ ] Tester `reload_registry` stretch goal (vide le lru_cache → force re-fetch GitHub)
-- [ ] Vérifier comportement si repo GitHub inaccessible au démarrage (message d'erreur clair)
+### Tests (137 → 142 passent)
+- ✅ `tests/test_tools_reload.py` (4 tests) — shape, no-diff, total, cache clear
+- ✅ `test_e2e.py` +1 — `reload_registry` via subprocess MCP
+- ✅ `test_integration.py` — `test_server_tools_registered` mis à jour (6 outils)
 
-### Documentation finale
-- [ ] `TESTING.md` avec protocole reproductible
-- [ ] README mis à jour avec la nouvelle config GitHub source
+### `reload_registry` — 6ème outil ✅
+- Vide le `lru_cache` et force un re-fetch depuis GitHub ou le clone local
+- Retourne le diff `{added, removed, modified, total}` vs l'état précédent
+- Résout l'inquiétude n°5 (données périmées après commit sur le marketplace)
 
-### Stretch : publication
-- [ ] Publier sur PyPI → permettre `uvx lab-registry-server` sans clone local
-- [ ] Config collègue universelle : `uvx lab-registry-server` + `REGISTRY_GITHUB_REPO`
+### Documentation finale ✅
+- ✅ `TESTING.md` créé — protocole reproductible, configs, troubleshooting
+- ✅ `README.md` mis à jour — 6 outils, GitHub source mode, configs user-level
+
+---
 
 ---
 

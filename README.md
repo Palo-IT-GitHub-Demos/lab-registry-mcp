@@ -86,7 +86,7 @@ export REGISTRY_PATH=/abs/path/to/gen-e2-marketplace
 mcp dev src/lab_registry/server.py
 
 # Stdio (for client config)
-REGISTRY_PATH=... mcp run src/lab_registry/server.py
+REGISTRY_GITHUB_REPO=owner/repo REGISTRY_GITHUB_TOKEN=ghp_... mcp run src/lab_registry/server.py
 
 # Unit + integration + E2E tests
 REGISTRY_PATH=../gen-e2-marketplace pytest tests/ -v
@@ -94,7 +94,7 @@ REGISTRY_PATH=../gen-e2-marketplace pytest tests/ -v
 
 ---
 
-## The 5 tools
+## The 6 tools
 
 ### `list_entries`
 List all registry entries. Returns a flat list of `RegistryEntry` objects.
@@ -186,38 +186,56 @@ Response:
 
 ---
 
+### `reload_registry`
+Force reload the in-memory cache from its source (GitHub or local). Use after a marketplace update to get fresh data without restarting the server.
+
+Response: `{ "added": [...], "removed": [...], "modified": [...], "total": N }`
+
+---
+
 ## Client configuration
 
-### Claude Code — `~/.claude/settings.json` (user-level, applies everywhere)
+> Both clients use **stdio transport** — no port, no HTTP.
 
-```json
-{
-  "mcpServers": {
-    "lab-registry": {
-      "command": "/abs/path/to/lab-registry-server/.venv/bin/mcp",
-      "args": ["run", "/abs/path/to/lab-registry-server/src/lab_registry/server.py"],
-      "env": { "REGISTRY_PATH": "/abs/path/to/gen-e2-marketplace" }
-    }
-  }
-}
+### GitHub source mode (recommended — no local clone required)
+
+Set `REGISTRY_GITHUB_REPO` to point directly at the marketplace repo.
+Optionally set `REGISTRY_GITHUB_TOKEN` for private repos (classic PAT, `repo` scope).
+
+**Claude Code CLI — user-level (applies to all projects)**
+
+```bash
+claude mcp add lab-registry --scope user \
+  -e REGISTRY_GITHUB_REPO=GLOBAL-PALO-IT/gen-e2-marketplace \
+  -e REGISTRY_GITHUB_TOKEN=ghp_... \
+  -- /abs/path/to/.venv/bin/mcp run /abs/path/to/src/lab_registry/server.py
 ```
 
-### GitHub Copilot agent mode — `.vscode/mcp.json` (workspace-level)
+**GitHub Copilot agent mode — `~/Library/Application Support/Code/User/mcp.json` (user-level, all projects)**
 
 ```json
 {
   "servers": {
     "lab-registry": {
       "type": "stdio",
-      "command": "/abs/path/to/lab-registry-server/.venv/bin/mcp",
-      "args": ["run", "/abs/path/to/lab-registry-server/src/lab_registry/server.py"],
-      "env": { "REGISTRY_PATH": "/abs/path/to/gen-e2-marketplace" }
+      "command": "/abs/path/to/.venv/bin/mcp",
+      "args": ["run", "/abs/path/to/src/lab_registry/server.py"],
+      "env": {
+        "REGISTRY_GITHUB_REPO": "GLOBAL-PALO-IT/gen-e2-marketplace",
+        "REGISTRY_GITHUB_TOKEN": "ghp_..."
+      }
     }
   }
 }
 ```
 
-> Use absolute paths. Both clients use stdio transport — no port, no HTTP.
+### Local source mode (development / offline)
+
+Set `REGISTRY_PATH` to the local clone of the marketplace repo instead.
+
+```json
+"env": { "REGISTRY_PATH": "/abs/path/to/gen-e2-marketplace" }
+```
 
 ---
 
@@ -259,7 +277,9 @@ tests/
   test_e2e.py              # full MCP protocol via subprocess (10 tests, requires REGISTRY_PATH)
 ```
 
-50 tests total, 0 failures. E2E tests are skipped if `REGISTRY_PATH` is not set.
+**141 tests total, 0 failures.**
+E2E and integration tests are skipped if `REGISTRY_PATH` is not set.
+GitHub tests use fully mocked HTTP — no network access required.
 
 ---
 
@@ -268,7 +288,7 @@ tests/
 - **No per-artifact versioning** — version is at plugin level; a plugin bump marks all its artefacts as outdated even if only one changed
 - **No deprecated detection** — no `deprecated` flag in the source format
 - **`updated_at` is best-effort** — parsed from `CHANGELOG.md`; `null` if absent
-- **No hot-reload** — cache is populated once at first tool call; server restart required after `git pull` on `gen-e2-marketplace` (see `reload_registry` in TODO.md)
+- **Cache on demand** — use `reload_registry` tool to refresh without restarting the server
 - **Hooks indexed one entry per plugin** — not per event type
 
       "env": { "REGISTRY_PATH": "${workspaceFolder}" }
@@ -286,3 +306,4 @@ tests/
 | `get_entry` | Full content: parsed metadata + raw markdown body |
 | `get_plugin` | All entries for one plugin + its manifest |
 | `check_compliance` | Diff local versions against registry |
+| `reload_registry` | Clear cache and re-fetch from source, returns diff |

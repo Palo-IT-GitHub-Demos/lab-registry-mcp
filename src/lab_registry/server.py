@@ -89,6 +89,34 @@ def check_compliance(entries: list[dict[str, Any]]) -> dict[str, Any]:
     return check_compliance_handler(entries=entries)
 
 
+@mcp.tool()
+def reload_registry() -> dict[str, Any]:
+    """Force reload the registry from its source (GitHub or local path).
+
+    Clears the in-memory cache and re-fetches all entries.
+    Use after a marketplace update (git pull / new commit) to get fresh data
+    without restarting the server.
+
+    Returns a diff vs the previous state:
+    - added: entry IDs new in this reload
+    - removed: entry IDs no longer present
+    - modified: entry IDs whose plugin_version changed
+    - total: total number of entries after reload
+    """
+    from lab_registry.registry import load_registry  # noqa: PLC0415
+
+    old = {e.id: e.plugin_version for e in load_registry()[0]}
+    load_registry.cache_clear()
+    new = {e.id: e.plugin_version for e in load_registry()[0]}
+
+    return {
+        "added":    [id for id in new if id not in old],
+        "removed":  [id for id in old if id not in new],
+        "modified": [id for id in new if id in old and new[id] != old[id]],
+        "total":    len(new),
+    }
+
+
 def main() -> None:
     mcp.run()
 

@@ -307,6 +307,23 @@ async def test_e2e_check_compliance_count_math():
     assert result["unknown"][0]["name"] == "ghost-entry-xyz"
 
 
+@SKIP
+@pytest.mark.asyncio
+async def test_e2e_reload_registry():
+    """reload_registry must return the four-key shape with correct total."""
+    result = await _call_server("reload_registry", {})
+    assert set(result.keys()) == {"added", "removed", "modified", "total"}
+    assert isinstance(result["added"], list)
+    assert isinstance(result["removed"], list)
+    assert isinstance(result["modified"], list)
+    assert isinstance(result["total"], int)
+    assert result["total"] >= 50  # real marketplace has 65+ entries
+    # No changes since source is unchanged
+    assert result["added"] == []
+    assert result["removed"] == []
+    assert result["modified"] == []
+
+
 # ---------------------------------------------------------------------------
 # Standalone runner
 # ---------------------------------------------------------------------------

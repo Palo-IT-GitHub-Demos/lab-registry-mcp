@@ -115,7 +115,8 @@ def test_server_tools_registered():
 
     tools = mod.mcp._tool_manager.list_tools()
     tool_names = {t.name for t in tools}
-    expected = {"list_entries", "search_entries", "get_entry", "get_plugin", "check_compliance"}
+    expected = {"list_entries", "search_entries", "get_entry", "get_plugin",
+                "check_compliance", "reload_registry"}
     assert tool_names == expected, f"Registered tools: {tool_names}"
 
 
