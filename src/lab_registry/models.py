@@ -40,3 +40,4 @@ class Plugin(BaseModel):
     tags: list[str] = []
     author: str | None = None
     plugin_license: str | None = None
+    source_path: str = ""   # relative path to plugin dir from registry root (e.g. "plugins/android")

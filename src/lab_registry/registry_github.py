@@ -307,6 +307,7 @@ def load_registry_from_github() -> tuple[list[RegistryEntry], dict[str, Plugin]]
             tags=tags,
             author=author,
             plugin_license=plugin_meta.get("license"),
+            source_path=plugin_path,
         )
 
     return all_entries, plugins
@@ -328,3 +329,14 @@ def fetch_entry_content_github(entry: RegistryEntry) -> tuple[dict, str]:
             f"Entry file not found on GitHub: {entry.path} in {repo_spec}@{branch}"
         )
     return _parse_frontmatter(text)
+
+
+def fetch_raw_file(path: str) -> str | None:
+    """Fetch any file from the configured GitHub repo. Returns None if not found."""
+    repo_spec = os.environ.get("REGISTRY_GITHUB_REPO", "")
+    if not repo_spec or "/" not in repo_spec:
+        return None
+    owner, repo = repo_spec.split("/", 1)
+    branch = os.environ.get("REGISTRY_GITHUB_BRANCH", "main")
+    token = os.environ.get("REGISTRY_GITHUB_TOKEN")
+    return _fetch_text(_raw_url(owner, repo, branch, path), token)

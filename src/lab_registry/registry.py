@@ -232,6 +232,8 @@ def _load_registry_local() -> tuple[list[RegistryEntry], dict[str, Plugin]]:
 
         entries = _load_plugin_entries(plugin_name, plugin_dir, version, tags, root)
         all_entries.extend(entries)
+        # source_path: relative to registry root (strip leading ./)
+        source_path = source.lstrip("./").lstrip("/")
         plugins[plugin_name] = Plugin(
             name=plugin_name,
             version=version,
@@ -239,6 +241,7 @@ def _load_registry_local() -> tuple[list[RegistryEntry], dict[str, Plugin]]:
             tags=tags,
             author=author,
             plugin_license=plugin_meta.get("license"),
+            source_path=source_path,
         )
 
     return all_entries, plugins
@@ -275,3 +278,20 @@ def get_entry_content(entry: RegistryEntry) -> tuple[dict, str]:
         return fetch_entry_content_github(entry)
     file_path = get_registry_path() / entry.path
     return _parse_frontmatter(file_path.read_text(encoding="utf-8"))
+
+
+def get_plugin_changelog(plugin_name: str) -> str | None:
+    """Return the raw text of a plugin's CHANGELOG.md, or None if absent."""
+    plugins = get_all_plugins()
+    plugin = plugins.get(plugin_name)
+    if plugin is None or not plugin.source_path:
+        return None
+
+    if os.environ.get("REGISTRY_GITHUB_REPO"):
+        from lab_registry.registry_github import fetch_raw_file  # noqa: PLC0415
+        return fetch_raw_file(f"{plugin.source_path}/CHANGELOG.md")
+
+    changelog_path = get_registry_path() / plugin.source_path / "CHANGELOG.md"
+    if not changelog_path.exists():
+        return None
+    return changelog_path.read_text(encoding="utf-8")

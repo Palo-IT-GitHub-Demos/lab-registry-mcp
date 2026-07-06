@@ -23,6 +23,14 @@ def get_entry_handler(plugin: str, type: str, name: str) -> dict[str, Any]:
     }
 
 
+def get_entry_by_id_handler(id: str) -> dict[str, Any]:
+    parts = id.strip().split("/")
+    if len(parts) != 3:
+        return {"error": f"Invalid entry ID '{id}'. Expected format: 'plugin/type/name'"}
+    plugin, type_, name = parts
+    return get_entry_handler(plugin=plugin, type=type_, name=name)
+
+
 def get_plugin_handler(plugin: str) -> dict[str, Any]:
     plugins = get_all_plugins()
     manifest = plugins.get(plugin)
@@ -33,4 +41,43 @@ def get_plugin_handler(plugin: str) -> dict[str, Any]:
     return {
         "manifest": manifest.model_dump(),
         "entries": [e.model_dump() for e in entries],
+    }
+
+
+def list_plugins_handler() -> list[dict[str, Any]]:
+    plugins = get_all_plugins()
+    all_entries = get_all_entries()
+
+    result = []
+    for name, plugin in sorted(plugins.items()):
+        plugin_entries = [e for e in all_entries if e.plugin == name]
+        counts: dict[str, int] = {"skill": 0, "agent": 0, "command": 0, "hook": 0}
+        for e in plugin_entries:
+            counts[e.type] = counts.get(e.type, 0) + 1
+
+        row = plugin.model_dump()
+        row["entry_counts"] = {**counts, "total": len(plugin_entries)}
+        result.append(row)
+
+    return result
+
+
+def get_changelog_handler(plugin: str) -> dict[str, Any]:
+    from lab_registry.registry import get_plugin_changelog  # noqa: PLC0415
+    plugins = get_all_plugins()
+    if plugin not in plugins:
+        return {"error": f"Plugin '{plugin}' not found in registry"}
+
+    changelog = get_plugin_changelog(plugin)
+    if changelog is None:
+        return {
+            "plugin": plugin,
+            "version": plugins[plugin].version,
+            "changelog_raw": None,
+            "warning": "No CHANGELOG.md found for this plugin",
+        }
+    return {
+        "plugin": plugin,
+        "version": plugins[plugin].version,
+        "changelog_raw": changelog,
     }

@@ -5,8 +5,16 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from lab_registry.tools.compliance import check_compliance_handler
-from lab_registry.tools.fetch import get_entry_handler, get_plugin_handler
-from lab_registry.tools.search import list_entries_handler, search_entries_handler
+from lab_registry.tools.fetch import (
+    get_changelog_handler,
+    get_entry_by_id_handler,
+    get_entry_handler,
+    get_plugin_handler,
+    list_plugins_handler,
+)
+from lab_registry.tools.search import list_entries_handler, search_entries_handler, suggest_entries_handler
+from lab_registry.tools.stats import get_marketplace_stats_handler
+from lab_registry.tools.validate import validate_entry_handler
 
 mcp = FastMCP(
     "lab-registry",
@@ -115,6 +123,95 @@ def reload_registry() -> dict[str, Any]:
         "modified": [id for id in new if id in old and new[id] != old[id]],
         "total":    len(new),
     }
+
+
+@mcp.tool()
+def list_plugins() -> list[dict[str, Any]]:
+    """List all plugins with version, description, and entry counts per type.
+
+    Returns one entry per plugin sorted alphabetically, with:
+    - name, version, description, tags, author
+    - entry_counts: {skill, agent, command, hook, total}
+    """
+    return list_plugins_handler()
+
+
+@mcp.tool()
+def get_entry_by_id(id: str) -> dict[str, Any]:
+    """Get a registry entry by its full ID (plugin/type/name).
+
+    Shortcut for get_entry when you already have the entry ID from list_entries.
+    Returns same shape as get_entry: {entry, metadata, content_raw}.
+
+    Example: id="android/skill/android-architecture"
+    """
+    return get_entry_by_id_handler(id=id)
+
+
+@mcp.tool()
+def get_changelog(plugin: str) -> dict[str, Any]:
+    """Get the full CHANGELOG.md content for a plugin.
+
+    Useful after check_compliance signals an outdated entry — shows what
+    changed between versions without leaving the MCP context.
+
+    Returns:
+    - plugin: plugin name
+    - version: current version
+    - changelog_raw: full CHANGELOG.md text (null if absent)
+    """
+    return get_changelog_handler(plugin=plugin)
+
+
+@mcp.tool()
+def get_marketplace_stats() -> dict[str, Any]:
+    """Get a dashboard overview of the entire registry.
+
+    Returns:
+    - total_entries, total_plugins
+    - by_type: entry counts per artifact type
+    - by_plugin: per-plugin breakdown with version and counts
+    - last_updated: most recent CHANGELOG date across all plugins
+    - plugins_without_changelog: plugins missing a CHANGELOG.md
+    """
+    return get_marketplace_stats_handler()
+
+
+@mcp.tool()
+def suggest_entries(
+    task: str,
+    type: str | None = None,
+    limit: int = 5,
+) -> list[dict[str, Any]]:
+    """Suggest registry entries relevant to a task description.
+
+    Scores entries by how many words from the task appear in their
+    name, description, plugin name, and tags. Returns entries ranked
+    by relevance score with matched_terms listed.
+
+    - task: natural language description (e.g. "write tests for a Go service")
+    - type: optional type filter ("skill", "agent", "command", "hook")
+    - limit: max results to return (default 5)
+    """
+    return suggest_entries_handler(task=task, type=type, limit=limit)
+
+
+@mcp.tool()
+def validate_entry(content: str, type: str) -> dict[str, Any]:
+    """Validate a skill/agent/command markdown file against the marketplace schema.
+
+    Checks required fields, recommended fields, body content, and naming conventions.
+
+    - content: full file content including YAML frontmatter
+    - type: "skill", "agent", "command", or "hook"
+
+    Returns:
+    - valid: bool
+    - errors: blocking schema violations
+    - warnings: non-blocking recommendations
+    - parsed: the parsed YAML frontmatter
+    """
+    return validate_entry_handler(content=content, type=type)
 
 
 def main() -> None:
