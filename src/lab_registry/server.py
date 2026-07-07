@@ -64,10 +64,16 @@ def get_entry(
 ) -> dict[str, Any]:
     """Get a specific registry entry with its full content.
 
+    Use this to read a single artefact's documentation or to get its install files.
+    To get all artefacts of a plugin at once, use get_plugin_install_package instead.
+
     Returns:
     - entry: structured RegistryEntry fields
     - metadata: parsed YAML frontmatter from the source file
     - content_raw: markdown body below the frontmatter (the actual instructions)
+    - content_full: verbatim file content (frontmatter + body), write-ready
+    - install_targets: exact destination paths per client (claude_local, copilot,
+      plugin_tracking)
     """
     return get_entry_handler(plugin=plugin, type=type, name=name)
 
@@ -224,14 +230,23 @@ def validate_entry(content: str, type: str) -> dict[str, Any]:
 
 @mcp.tool()
 def get_plugin_install_package(plugin: str) -> dict[str, Any]:
-    """Get a complete install package for a plugin — one call, everything needed.
+    """Get full documentation AND install-ready files for an entire plugin in one call.
+
+    Use this whenever the user wants to:
+    - install a plugin into their project
+    - get the documentation and install files for a plugin
+    - know where to place a plugin's artefacts in their project
 
     Returns all artefacts with:
-    - content_full: verbatim file content (frontmatter + body), write-ready
-    - install_targets: exact paths for claude_local (.claude/) and copilot (.github/)
-    - plugin_tracking: the plugin.json to write to .claude/plugins/ for compliance tracking
+    - content_full: verbatim file content (frontmatter + body), write-ready — use
+      this to write the file directly without any reconstruction
+    - install_targets: exact destination paths per client:
+        claude_local  → .claude/skills|agents|commands/{name}/...
+        copilot       → .github/skills|agents|prompts/{name}/...
+        plugin_tracking → .claude/plugins/{plugin}/plugin.json
+    - plugin_tracking: the plugin.json content to write for compliance tracking
 
-    Prefer this over multiple get_entry calls when installing a full plugin.
+    Prefer this over multiple get_entry calls when working with a full plugin.
     """
     return get_plugin_install_package_handler(plugin=plugin)
 
