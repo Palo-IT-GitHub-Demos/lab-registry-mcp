@@ -81,7 +81,7 @@ lab-registry-mcp/            ← this repo
 pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp"
 
 # Or pin an explicit tag
-pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.1.0"
+pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.2.0"
 ```
 
 For local development:
@@ -191,6 +191,18 @@ REGISTRY_PATH=../gen-e2-marketplace pytest tests/ -v
 
 > **Response shapes:** `list_entries`, `search_entries`, and `suggest_entries` use a lean serialization — only populated fields are returned (no `null` or empty-list noise). `get_entry` always returns the full entry shape.
 
+### Tool selection guide
+
+| Goal | Use |
+|---|---|
+| Exact keyword or partial name (e.g. `"tdd"`, `"android"`) | `search_entries` |
+| Natural language task description (e.g. `"I need to review architecture"`) | `suggest_entries` |
+| Browse by type or plugin | `list_entries` with filters |
+| Install a full plugin (all artefacts + paths) | `get_plugin_install_package` |
+| Read one specific artefact | `get_entry` or `get_entry_by_id` |
+| Check installed plugins are up to date | discover local `plugin.json` → `check_compliance` |
+| See what changed in a plugin | `get_changelog` |
+
 ### `list_entries`
 
 List all registry entries. Returns a flat list of `RegistryEntry` objects.
@@ -225,16 +237,18 @@ Keyword search over name, description, and plugin name. Name matches are ranked 
 
 ### `suggest_entries`
 
-Task-oriented suggestion tool. Scores entries against a free-text task description and returns the most relevant matches.
+Task-oriented suggestion tool. Splits the task into individual terms and scores entries by how many terms appear in their name, description, plugin name, and tags.
+
+Use for natural language queries. For exact keyword or partial name matching, use `search_entries` instead.
 
 | Parameter | Type | Description |
 | --------- | ---- | ----------- |
-| `query` | `string` | Task description or need |
+| `task` | `string` | Natural language description of what you need |
 | `type` | `string?` | Optional type filter |
-| `limit` | `integer?` | Maximum number of results |
+| `limit` | `integer?` | Maximum number of results (default 5) |
 
 ```json
-{ "query": "I need to write tests for a Go service", "type": "skill", "limit": 5 }
+{ "task": "I need to write tests for a Go service", "type": "skill", "limit": 5 }
 ```
 
 ---
@@ -275,7 +289,7 @@ Response shape:
 
 ### `get_entry_by_id`
 
-Fetch one entry directly from its canonical ID.
+Fetch one entry directly from its canonical ID. Returns the same shape as `get_entry`: `entry`, `metadata`, `content_raw`, `content_full`, and `install_targets`.
 
 | Parameter | Type | Description |
 | --------- | ---- | ----------- |
@@ -337,13 +351,17 @@ Useful for dashboards, summaries, and quick health checks.
 
 ### `check_compliance`
 
-Diff a client's local inventory against the registry. Each item must have `name`, `type`, `plugin`, and `local_version`.
+Check whether locally installed gen-e2 plugin artefacts are up to date with the registry.
+
+**Recommended workflow:** discover local `plugin.json` files (e.g. `.claude/plugins/*/plugin.json`), read the `version` field from each, then call this tool — do not compare versions manually.
+
+Each item in `entries` must have `name`, `type`, `plugin`, and `local_version`.
 
 ```json
 {
   "entries": [
-    { "name": "android-architecture", "type": "skill", "plugin": "android", "local_version": "0.1.0" },
-    { "name": "my-custom-skill",      "type": "skill", "plugin": "android", "local_version": "0.1.0" }
+    { "name": "research",   "type": "skill", "plugin": "research-suite", "local_version": "0.8.0" },
+    { "name": "coi-verify", "type": "skill", "plugin": "research-suite", "local_version": "0.8.0" }
   ]
 }
 ```
@@ -352,13 +370,13 @@ Response:
 
 ```json
 {
-  "outdated": [],
-  "unknown":  [{ "name": "my-custom-skill", "type": "skill", "plugin": "android" }],
-  "up_to_date_count": 1
+  "outdated": [{ "name": "research", "plugin": "research-suite", "local_version": "0.8.0", "registry_version": "1.0.1" }],
+  "unknown":  [],
+  "up_to_date_count": 0
 }
 ```
 
-`outdated` = version mismatch. `unknown` = not found in registry. No deprecated detection (field absent from source format).
+`outdated` = version mismatch. `unknown` = not found in registry.
 
 ---
 
@@ -428,44 +446,70 @@ Response: `{ "added": [...], "removed": [...], "modified": [...], "total": N }`
 
 ## Usage examples
 
-These are natural-language prompts you can use from Copilot Agent mode or Claude Code.
+These are natural-language prompts validated against the live registry.
 
 ### 1) Discover what exists
 
-Prompt:
 ```text
-Give me a summary of all available gen-e2 plugins
+What gen-e2 plugins are available and which was updated most recently?
 ```
 
-Typical tools used: `list_plugins` or `get_marketplace_stats`
+Typical tools used: `get_marketplace_stats` (returns `last_updated_plugin`) + `list_plugins`
 
 ---
 
-### 2) Find entries by role or type
+### 2) Find by type
 
-Prompt:
 ```text
-List all gen-e2 agents available in the registry
+What gen-e2 agents are available in the registry?
 ```
 
 Typical tools used: `list_entries` with `type="agent"`
 
 ---
 
-### 3) Get recommendations for a task
+### 3) Natural language search
 
-Prompt:
 ```text
-I need to write tests for a Go service. Which gen-e2 skills are relevant?
+Search the gen-e2 registry for skills related to architecture review.
 ```
 
-Typical tools used: `suggest_entries` (optionally cross-checked with `list_entries`)
+Typical tools used: `suggest_entries` with a task description
 
 ---
 
-### 4) Fetch full content by ID
+### 4) Get documentation and install files
 
-Prompt:
+```text
+Get the full documentation and install files for the gen-e2 delivery plugin.
+```
+
+Typical tools used: `get_plugin_install_package` — returns all artefacts with `content_full` + `install_targets` in one call
+
+---
+
+### 5) Install a plugin into the current project
+
+```text
+Install the gen-e2 implementation-plan plugin into my project for both Claude Code and GitHub Copilot.
+```
+
+Typical tools used: `get_plugin_install_package` → write each `file.content_full` to `file.install_targets.claude_local` and `file.install_targets.copilot`
+
+---
+
+### 6) Check for outdated plugins
+
+```text
+Check if my locally installed gen-e2 plugins are up to date with the registry.
+```
+
+Typical tools used: discover `.claude/plugins/*/plugin.json` → `check_compliance` → `get_changelog` for outdated entries
+
+---
+
+### 7) Read one entry
+
 ```text
 Get the full content of android/skill/android-architecture
 ```
@@ -474,31 +518,8 @@ Typical tools used: `get_entry_by_id`
 
 ---
 
-### 5) Inspect everything in one plugin
+### 8) Validate a new contribution
 
-Prompt:
-```text
-Show me everything in the gen-e2 delivery plugin
-```
-
-Typical tools used: `get_plugin`, then `get_entry_by_id` for complete raw content per entry
-
----
-
-### 6) Explain version drift
-
-Prompt:
-```text
-Check if these local entries are up to date and show me what changed in the plugin changelog
-```
-
-Typical tools used: `check_compliance` then `get_changelog`
-
----
-
-### 7) Validate a new contribution
-
-Prompt:
 ```text
 Validate this new skill markdown file against the gen-e2 schema
 ```
@@ -507,25 +528,13 @@ Typical tools used: `validate_entry`
 
 ---
 
-### 8) Refresh cache after marketplace updates
+### 9) Refresh cache after marketplace updates
 
-Prompt:
 ```text
 Reload the gen-e2 registry and tell me what changed
 ```
 
 Typical tools used: `reload_registry`
-
----
-
-### 9) Install a plugin into the current project
-
-Prompt:
-```text
-Install the implementation-plan plugin into my project for both Claude Code and GitHub Copilot
-```
-
-Typical tools used: `get_plugin_install_package` — returns all files with `content_full` and `install_targets` in one call
 
 ---
 
@@ -537,11 +546,10 @@ Current state of `gen-e2-marketplace` as indexed:
 |--------|---------|--------|--------|----------|-------|
 | android | 0.1.0 | 14 | 9 | 9 | 1 |
 | architecture-reviewer | 0.1.0 | 4 | 1 | 0 | 0 |
-| delivery | 0.2.3 | 5 | 0 | 0 | 0 |
-| dev-workflow | 0.1.0 | 3 | 1 | 4 | 1 |
+| delivery | 0.2.3 | 5 | 1 | 0 | 0 |
 | figma-design-to-code | 0.1.0 | 1 | 0 | 0 | 0 |
 | fortran77-explainer | 0.1.0 | 0 | 1 | 0 | 0 |
-| go-tdd-orchestrator | 0.1.0 | 1 | 1 | 0 | 0 |
+| go-tdd-orchestrator | 0.1.0 | 2 | 3 | 0 | 0 |
 | html-planner-and-presentation | 0.1.0 | 3 | 0 | 0 | 0 |
 | html-presentation | 0.1.0 | 1 | 0 | 0 | 0 |
 | implementation-plan | 0.1.0 | 1 | 0 | 0 | 0 |
@@ -549,9 +557,11 @@ Current state of `gen-e2-marketplace` as indexed:
 | migration-implementation-plan | 0.1.0 | 1 | 0 | 0 | 0 |
 | research-suite | 1.0.1 | 2 | 0 | 0 | 0 |
 | swift5-development-test-writer | 0.1.0 | 2 | 0 | 0 | 0 |
-| **Total** | | **43** | **13** | **13** | **2** |
+| **Total** | | **40** | **15** | **9** | **1** |
 
-**74 artefacts** indexed across 14 plugins. `updated_at` is `null` for 4 plugins without `CHANGELOG.md`.
+**65 artefacts** indexed across 13 plugins when reading from `GLOBAL-PALO-IT/gen-e2-marketplace`.
+
+> `dev-workflow` exists in a local clone of the marketplace but is not published to the shared GitHub repository — it is excluded from the counts above. `updated_at` is `null` for plugins without a `CHANGELOG.md`.
 
 ---
 
