@@ -91,16 +91,20 @@ def get_plugin(plugin: str) -> dict[str, Any]:
 
 @mcp.tool()
 def check_compliance(entries: list[dict[str, Any]]) -> dict[str, Any]:
-    """Check local entries against the registry.
+    """Check whether locally installed gen-e2 plugin artefacts are up to date with the registry.
+
+    Use this whenever the user asks to verify, check, or audit their installed gen-e2 plugins.
+    Workflow: discover local plugin.json files (e.g. .claude/plugins/*/plugin.json), read the
+    version field from each, then call this tool — do NOT compare versions manually.
 
     Each item in entries must have:
-    - name: artifact name (e.g. "android-architecture")
+    - name: artifact name (e.g. "research", "commit-push-pr")
     - type: "skill", "agent", "command", or "hook"
-    - plugin: plugin name (e.g. "android")
-    - local_version: version currently used locally (e.g. "0.1.0")
+    - plugin: plugin name (e.g. "research-suite", "delivery")
+    - local_version: version read from the local plugin.json (e.g. "0.8.0")
 
     Returns:
-    - outdated: entries where local_version != current registry version
+    - outdated: entries where local_version != current registry version (includes registry_version)
     - unknown: entries not found in the registry
     - up_to_date_count: number of entries that match the registry
     """
