@@ -43,6 +43,12 @@ This file tracks only current, actionable items.
 
 ---
 
+## Tool guidance (identified during prompt testing)
+
+- [ ] **Clarify `search_entries` vs `suggest_entries` in docstrings** — AI clients consistently try `search_entries` first for natural-language queries, which does exact substring match and returns nothing for multi-word phrases. `suggest_entries` (multi-term scoring) is the right tool for natural language. Add a `When to use` note to both docstrings:
+  - `search_entries`: exact keyword or partial name match (e.g. `"architecture"`, `"tdd"`)
+  - `suggest_entries`: natural language task description (e.g. `"I need to review architecture and create ADRs"`)
+
 ## Future improvements (identified during demo)
 
 ### Priority 1 — Content integrity ✅ done

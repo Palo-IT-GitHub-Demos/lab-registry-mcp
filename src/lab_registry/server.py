@@ -44,11 +44,14 @@ def search_entries(
     query: str,
     type: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Search registry entries by keyword.
+    """Search registry entries by exact keyword or partial name match.
 
     Searches name, description, and plugin name.
     Name matches are ranked before description matches.
     Optionally restrict results to a specific type.
+
+    Use this when you have a specific keyword or partial name (e.g. "tdd", "android",
+    "architecture"). For natural language task descriptions, use suggest_entries instead.
     """
     return search_entries_handler(query=query, type=type)
 
@@ -184,13 +187,17 @@ def suggest_entries(
     type: str | None = None,
     limit: int = 5,
 ) -> list[dict[str, Any]]:
-    """Suggest registry entries relevant to a task description.
+    """Suggest registry entries relevant to a natural language task description.
 
-    Scores entries by how many words from the task appear in their
-    name, description, plugin name, and tags. Returns entries ranked
-    by relevance score with matched_terms listed.
+    Splits the task into individual terms and scores entries by how many terms
+    appear in their name, description, plugin name, and tags. Returns entries
+    ranked by relevance score with matched_terms listed.
 
-    - task: natural language description (e.g. "write tests for a Go service")
+    Use this for natural language queries (e.g. "I need to review architecture and
+    create ADRs", "write tests for a Go service"). For exact keyword or partial name
+    matching, use search_entries instead.
+
+    - task: natural language description of what you need
     - type: optional type filter ("skill", "agent", "command", "hook")
     - limit: max results to return (default 5)
     """
