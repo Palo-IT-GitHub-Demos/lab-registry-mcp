@@ -21,7 +21,7 @@ def list_entries_handler(
         tag_set = set(tags)
         entries = [e for e in entries if tag_set.intersection(e.tags)]
 
-    return [e.model_dump() for e in entries]
+    return [e.summary_dump() for e in entries]
 
 
 def search_entries_handler(
@@ -47,7 +47,7 @@ def search_entries_handler(
         ):
             desc_matches.append(entry)
 
-    return [e.model_dump() for e in name_matches + desc_matches]
+    return [e.summary_dump() for e in name_matches + desc_matches]
 
 
 def suggest_entries_handler(
@@ -81,7 +81,7 @@ def suggest_entries_handler(
 
     result = []
     for score, entry, matched in scored[:limit]:
-        row = entry.model_dump()
+        row = entry.summary_dump()
         row["score"] = score
         row["matched_terms"] = matched
         result.append(row)

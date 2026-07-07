@@ -274,11 +274,9 @@ async def test_e2e_search_entries_with_type_filter():
 @SKIP
 @pytest.mark.asyncio
 async def test_e2e_all_entry_keys_present_in_list_entries():
-    """Every entry returned by list_entries must carry all documented fields."""
+    """Every entry returned by list_entries must carry the core summary fields."""
     expected_keys = {
-        "id", "name", "type", "plugin", "plugin_version", "description",
-        "path", "updated_at", "tags", "disable_model_invocation", "model",
-        "allowed_tools", "context", "agent_skills", "argument_hint", "hook_events",
+        "id", "name", "type", "plugin", "plugin_version", "description", "tags",
     }
     result = await _call_server("list_entries", {"type": "skill"})
     for entry in result[:5]:  # first 5 is enough

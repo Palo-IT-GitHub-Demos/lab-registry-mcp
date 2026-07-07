@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json as _json
 from typing import Any
 
 from lab_registry.registry import (
@@ -8,6 +9,28 @@ from lab_registry.registry import (
     get_all_plugins,
     get_entry_content,
 )
+from lab_registry.models import RegistryEntry
+
+
+def _install_targets(entry: RegistryEntry) -> dict[str, str]:
+    """Return the canonical install paths for each supported AI client."""
+    t = entry.type.value  # "skill", "agent", "command", "hook"
+    n = entry.name
+    p = entry.plugin
+    targets: dict[str, str] = {"plugin_tracking": f".claude/plugins/{p}/plugin.json"}
+    if t == "skill":
+        targets["claude_local"] = f".claude/skills/{n}/SKILL.md"
+        targets["copilot"]      = f".github/skills/{n}/SKILL.md"
+    elif t == "agent":
+        targets["claude_local"] = f".claude/agents/{n}.md"
+        targets["copilot"]      = f".github/agents/{n}.agent.md"
+    elif t == "command":
+        targets["claude_local"] = f".claude/commands/{n}.md"
+        targets["copilot"]      = f".github/prompts/{n}.prompt.md"
+    else:  # hook
+        targets["claude_local"] = f".claude/hooks/{n}.json"
+        targets["copilot"]      = f".github/hooks/{n}.json"
+    return targets
 
 
 def get_entry_handler(plugin: str, type: str, name: str) -> dict[str, Any]:
@@ -15,11 +38,13 @@ def get_entry_handler(plugin: str, type: str, name: str) -> dict[str, Any]:
     if entry is None:
         return {"error": f"Entry '{plugin}/{type}/{name}' not found in registry"}
 
-    metadata, content_raw = get_entry_content(entry)
+    metadata, content_raw, content_full = get_entry_content(entry)
     return {
         "entry": entry.model_dump(),
         "metadata": metadata,
         "content_raw": content_raw,
+        "content_full": content_full,
+        "install_targets": _install_targets(entry),
     }
 
 
@@ -40,7 +65,7 @@ def get_plugin_handler(plugin: str) -> dict[str, Any]:
     entries = [e for e in get_all_entries() if e.plugin == plugin]
     return {
         "manifest": manifest.model_dump(),
-        "entries": [e.model_dump() for e in entries],
+        "entries": [e.summary_dump() for e in entries],
     }
 
 
@@ -55,11 +80,48 @@ def list_plugins_handler() -> list[dict[str, Any]]:
         for e in plugin_entries:
             counts[e.type] = counts.get(e.type, 0) + 1
 
-        row = plugin.model_dump()
+        row = plugin.model_dump(exclude_none=True)
+        if not row.get("tags"):
+            row.pop("tags", None)
         row["entry_counts"] = {**counts, "total": len(plugin_entries)}
         result.append(row)
 
     return result
+
+
+def get_plugin_install_package_handler(plugin: str) -> dict[str, Any]:
+    """Return a complete install package: all artefacts with content_full + install_targets."""
+    plugins = get_all_plugins()
+    manifest = plugins.get(plugin)
+    if manifest is None:
+        return {"error": f"Plugin '{plugin}' not found in registry"}
+
+    entries = [e for e in get_all_entries() if e.plugin == plugin]
+    files = []
+    for entry in entries:
+        metadata, content_raw, content_full = get_entry_content(entry)
+        files.append({
+            "id": entry.id,
+            "type": entry.type,
+            "name": entry.name,
+            "content_full": content_full,
+            "install_targets": _install_targets(entry),
+        })
+
+    plugin_json_content = _json.dumps({
+        "name": plugin,
+        "version": manifest.version,
+        "description": manifest.description,
+    }, indent=2)
+
+    return {
+        "plugin": manifest.model_dump(),
+        "files": files,
+        "plugin_tracking": {
+            "path": f".claude/plugins/{plugin}/plugin.json",
+            "content": plugin_json_content,
+        },
+    }
 
 
 def get_changelog_handler(plugin: str) -> dict[str, Any]:

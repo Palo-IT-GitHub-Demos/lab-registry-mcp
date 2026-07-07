@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lab-registry-server"
-version = "0.1.0"
+version = "0.2.0"
 description = "MCP server exposing the Gen-e2 Lab Registry (skills, agents, commands, hooks)"
 readme = "README.md"
 requires-python = ">=3.12"

@@ -242,6 +242,7 @@ def _load_registry_local() -> tuple[list[RegistryEntry], dict[str, Plugin]]:
             author=author,
             plugin_license=plugin_meta.get("license"),
             source_path=source_path,
+            updated_at=_extract_updated_at(plugin_dir),
         )
 
     return all_entries, plugins
@@ -271,13 +272,19 @@ def find_entry(plugin: str, type_: str, name: str) -> RegistryEntry | None:
     return next((e for e in get_all_entries() if e.id == target_id), None)
 
 
-def get_entry_content(entry: RegistryEntry) -> tuple[dict, str]:
-    """Read the entry's source file and return (parsed_frontmatter, markdown_body)."""
+def get_entry_content(entry: RegistryEntry) -> tuple[dict, str, str]:
+    """Read the entry's source file and return (parsed_frontmatter, markdown_body, verbatim_content).
+
+    verbatim_content is the raw file bytes as a string — frontmatter + body joined,
+    ready to write directly to disk without any reconstruction by the caller.
+    """
     if os.environ.get("REGISTRY_GITHUB_REPO"):
         from lab_registry.registry_github import fetch_entry_content_github  # noqa: PLC0415
         return fetch_entry_content_github(entry)
     file_path = get_registry_path() / entry.path
-    return _parse_frontmatter(file_path.read_text(encoding="utf-8"))
+    content_full = file_path.read_text(encoding="utf-8")
+    metadata, content_raw = _parse_frontmatter(content_full)
+    return metadata, content_raw, content_full
 
 
 def get_plugin_changelog(plugin_name: str) -> str | None:

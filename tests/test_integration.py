@@ -88,7 +88,7 @@ def test_real_get_entry_content_readable(real_entries):
         if entry.type == "hook":
             continue
         try:
-            _, body = get_entry_content(entry)
+            _, body, _full = get_entry_content(entry)
             if not body.strip():
                 errors.append((entry.id, "empty body"))
         except Exception as exc:
@@ -120,6 +120,7 @@ def test_server_tools_registered():
         "check_compliance", "reload_registry",
         "list_plugins", "get_entry_by_id", "get_changelog",
         "get_marketplace_stats", "suggest_entries", "validate_entry",
+        "get_plugin_install_package",
     }
     assert tool_names == expected, f"Registered tools: {tool_names}"
 

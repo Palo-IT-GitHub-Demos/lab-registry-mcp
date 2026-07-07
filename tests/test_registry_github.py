@@ -219,7 +219,7 @@ def test_github_get_entry_content_skill():
     from lab_registry.registry import find_entry, get_entry_content
     entry = find_entry("gh-plugin", "skill", "gh-skill")
     assert entry is not None
-    metadata, body = get_entry_content(entry)
+    metadata, body, full = get_entry_content(entry)
     assert metadata["name"] == "gh-skill"
     assert metadata["model"] == "sonnet"
     assert "Skill body" in body
@@ -230,7 +230,7 @@ def test_github_get_entry_content_hook():
     from lab_registry.registry import find_entry, get_entry_content
     entry = find_entry("gh-plugin", "hook", "hooks")
     assert entry is not None
-    _, body = get_entry_content(entry)
+    _, body, full = get_entry_content(entry)
     assert "PostToolUse" in body  # JSON content is returned as-is
 
 

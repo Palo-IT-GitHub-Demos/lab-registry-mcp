@@ -10,24 +10,24 @@ In normal usage, the server reads that source directly from GitHub.
 
 ---
 
-### What it does
+## What it does
 
-An MCP server connected to the gen-e2 plugins repository so an agent can access the library directly from VS Code.
+This MCP server connects to the gen-e2 plugins repository and gives agents direct access to the library from VS Code.
 
-### Who it helps
+### Who it's for
 
-Mainly Labs developers, especially people getting started with gen-e2.
+It is mainly intended for Labs developers, especially those who are new to gen-e2.
 
 ### Why it exists
 
-To make the gen-e2 library easier to discover, search, reuse, and keep up to date across projects.
+It makes the gen-e2 library easier to discover, reuse, and integrate across projects.
 
 ### Main use cases
 
-- Explore the gen-e2 artefact library more deeply
-- Search a specific plugin or artefact by name and reuse it quickly in the current project
-- Get suggestions for which gen-e2 artefacts are relevant to the current project or task
-- Detect new gen-e2 plugins, version drift, or recent modifications in the library
+- Explore the gen-e2 artefact library in more depth
+- Find a specific plugin or artefact by name and integrate it easily into the current project
+- Get suggestions for which gen-e2 artefacts are most relevant to the current project
+- Stay informed about new gen-e2 plugins and updates to existing ones
 
 ---
 
@@ -53,7 +53,7 @@ lab-registry-mcp/            ← this repo
   src/lab_registry/
     registry.py              ← reads marketplace on first call, caches result
     models.py                ← RegistryEntry, Plugin (Pydantic)
-    server.py                ← FastMCP, 12 tools registered via @mcp.tool()
+    server.py                ← FastMCP, 13 tools registered via @mcp.tool()
     tools/
       search.py              ← list_entries, search_entries, suggest_entries
       fetch.py               ← get_entry, get_plugin, get_entry_by_id, list_plugins, get_changelog
@@ -187,7 +187,9 @@ REGISTRY_PATH=../gen-e2-marketplace pytest tests/ -v
 
 ---
 
-## The 12 tools
+## The 13 tools
+
+> **Response shapes:** `list_entries`, `search_entries`, and `suggest_entries` use a lean serialization — only populated fields are returned (no `null` or empty-list noise). `get_entry` always returns the full entry shape.
 
 ### `list_entries`
 
@@ -255,11 +257,19 @@ Response shape:
 
 ```json
 {
-  "entry": { "id": "android/skill/android-architecture", "plugin_version": "0.1.0", ... },
-  "metadata": { "name": "android-architecture", "description": "..." },
-  "content_raw": "# Android architecture (project delta)\n\n..."
+  "entry":          { "id": "android/skill/android-architecture", "plugin_version": "0.1.0", ... },
+  "metadata":       { "name": "android-architecture", "description": "..." },
+  "content_raw":    "# Android architecture (project delta)\n\n...",
+  "content_full":   "---\nname: android-architecture\n---\n# Android architecture...\n",
+  "install_targets": {
+    "claude_local":    ".claude/skills/android-architecture/SKILL.md",
+    "copilot":         ".github/skills/android-architecture/SKILL.md",
+    "plugin_tracking": ".claude/plugins/android/plugin.json"
+  }
 }
 ```
+
+`content_full` is the verbatim source file (frontmatter + body) — write it directly to `install_targets.claude_local` or `install_targets.copilot` without any reconstruction.
 
 ---
 
@@ -319,6 +329,8 @@ Return the raw `CHANGELOG.md` content for a plugin.
 
 Return marketplace-level statistics: totals, counts by type, counts by plugin, and latest update information.
 
+Includes `last_updated` (most recent date across all entries) and `last_updated_plugin` (name of the plugin that was updated most recently).
+
 Useful for dashboards, summaries, and quick health checks.
 
 ---
@@ -362,6 +374,47 @@ Typical output includes:
 - parsed frontmatter when available
 
 Useful before contributing a new artefact to the marketplace.
+
+---
+
+### `get_plugin_install_package`
+
+Return a complete install package for a plugin — **one call, everything needed to install**.
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `plugin` | `string` | Plugin name |
+
+```json
+{ "plugin": "implementation-plan" }
+```
+
+Response shape:
+
+```json
+{
+  "plugin": { "name": "implementation-plan", "version": "0.1.0", ... },
+  "files": [
+    {
+      "id": "implementation-plan/skill/create-implementation-plan",
+      "type": "skill",
+      "name": "create-implementation-plan",
+      "content_full": "---\nname: create-implementation-plan\n---\n...",
+      "install_targets": {
+        "claude_local":    ".claude/skills/create-implementation-plan/SKILL.md",
+        "copilot":         ".github/skills/create-implementation-plan/SKILL.md",
+        "plugin_tracking": ".claude/plugins/implementation-plan/plugin.json"
+      }
+    }
+  ],
+  "plugin_tracking": {
+    "path":    ".claude/plugins/implementation-plan/plugin.json",
+    "content": "{\"name\": \"implementation-plan\", \"version\": \"0.1.0\", ...}"
+  }
+}
+```
+
+Prefer this over multiple `get_entry` calls when installing a full plugin. Each file in `files` has `content_full` (write-ready) and `install_targets` (exact paths per client).
 
 ---
 
@@ -465,6 +518,17 @@ Typical tools used: `reload_registry`
 
 ---
 
+### 9) Install a plugin into the current project
+
+Prompt:
+```text
+Install the implementation-plan plugin into my project for both Claude Code and GitHub Copilot
+```
+
+Typical tools used: `get_plugin_install_package` — returns all files with `content_full` and `install_targets` in one call
+
+---
+
 ## Registry coverage
 
 Current state of `gen-e2-marketplace` as indexed:
@@ -501,16 +565,17 @@ tests/
   test_tools_fetch.py      # unit: get_entry, get_plugin (8 tests)
   test_tools_compliance.py # unit: check_compliance (6 tests)
   test_tools_reload.py     # unit: reload_registry (4 tests)
-  test_tools_new.py        # unit: 6 new tools — list_plugins, get_entry_by_id,
+  test_tools_new.py        # unit: 7 new tools — list_plugins, get_entry_by_id,
                            #       get_changelog, get_marketplace_stats,
-                           #       suggest_entries, validate_entry (35 tests)
-  test_contract.py         # contract: response shapes for all tools (38 tests)
+                           #       suggest_entries, validate_entry,
+                           #       get_plugin_install_package (38 tests)
+  test_contract.py         # contract: response shapes for all tools (40 tests)
   test_registry_github.py  # GitHub source mode (mocked HTTP, 16 tests)
   test_integration.py      # real marketplace: IDs, content, handlers (15 tests)
-  test_e2e.py              # full MCP subprocess — all 12 tools (20 tests)
+  test_e2e.py              # full MCP subprocess — all 13 tools (20 tests)
 ```
 
-**177 tests total, 0 failures.**
+**179 tests total, 0 failures.**
 E2E and integration tests are skipped if `REGISTRY_PATH` is not set.
 GitHub tests use fully mocked HTTP — no network access required.
 

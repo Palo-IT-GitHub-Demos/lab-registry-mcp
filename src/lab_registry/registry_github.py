@@ -308,14 +308,16 @@ def load_registry_from_github() -> tuple[list[RegistryEntry], dict[str, Plugin]]
             author=author,
             plugin_license=plugin_meta.get("license"),
             source_path=plugin_path,
+            updated_at=updated_at,
         )
 
     return all_entries, plugins
 
 
-def fetch_entry_content_github(entry: RegistryEntry) -> tuple[dict, str]:
+def fetch_entry_content_github(entry: RegistryEntry) -> tuple[dict, str, str]:
     """Fetch a single entry's raw file content from GitHub.
 
+    Returns (parsed_frontmatter, markdown_body, verbatim_content).
     Called by registry.get_entry_content() when REGISTRY_GITHUB_REPO is set.
     """
     repo_spec = os.environ.get("REGISTRY_GITHUB_REPO", "")
@@ -328,7 +330,8 @@ def fetch_entry_content_github(entry: RegistryEntry) -> tuple[dict, str]:
         raise FileNotFoundError(
             f"Entry file not found on GitHub: {entry.path} in {repo_spec}@{branch}"
         )
-    return _parse_frontmatter(text)
+    metadata, content_raw = _parse_frontmatter(text)
+    return metadata, content_raw, text
 
 
 def fetch_raw_file(path: str) -> str | None:

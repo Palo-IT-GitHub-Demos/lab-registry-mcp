@@ -40,3 +40,27 @@ This file tracks only current, actionable items.
 - [ ] `get_entry_batch`: fetch multiple entries in one call
 - [ ] `diff_plugin`: structured changelog diff between two plugin versions
 - [ ] `export_snapshot`: full registry JSON export (without `content_raw`)
+
+---
+
+## Future improvements (identified during demo)
+
+### Priority 1 — Content integrity ✅ done
+
+- [x] Add `content_full` to `get_entry` response — verbatim file (frontmatter + body), write-ready. Fixes AI dropping YAML frontmatter when installing skills.
+- [x] `get_entry` and `get_entry_by_id` now return `content_full` alongside the existing `metadata` and `content_raw` fields.
+
+### Priority 2 — Response minimalism ✅ done
+
+- [x] `RegistryEntry.summary_dump()` — lean serialization used by `list_entries`, `search_entries`, `suggest_entries`. Strips null/empty type-specific fields. Core keys always present: `id`, `name`, `type`, `plugin`, `plugin_version`, `description`, `tags`.
+- [x] `get_entry` keeps full `model_dump()` for the `entry` field — two modes: lean for discovery, full for fetch.
+
+### Priority 3 — Installation ergonomics ✅ done
+
+- [x] `install_targets` added to `get_entry` response — computed paths for `claude_local`, `copilot`, and `plugin_tracking` per artefact type.
+- [x] New tool `get_plugin_install_package(plugin)` — returns all artefacts with `content_full` + `install_targets` in one call.
+
+### Priority 4 — Registry freshness ✅ done
+
+- [x] `updated_at` added to `Plugin` model — populated at load time from `CHANGELOG.md`, exposed in `list_plugins`.
+- [x] `last_updated_plugin` added to `get_marketplace_stats` — identifies the most recently updated plugin by name alongside the existing `last_updated` date.

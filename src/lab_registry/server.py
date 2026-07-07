@@ -10,6 +10,7 @@ from lab_registry.tools.fetch import (
     get_entry_by_id_handler,
     get_entry_handler,
     get_plugin_handler,
+    get_plugin_install_package_handler,
     list_plugins_handler,
 )
 from lab_registry.tools.search import list_entries_handler, search_entries_handler, suggest_entries_handler
@@ -212,6 +213,20 @@ def validate_entry(content: str, type: str) -> dict[str, Any]:
     - parsed: the parsed YAML frontmatter
     """
     return validate_entry_handler(content=content, type=type)
+
+
+@mcp.tool()
+def get_plugin_install_package(plugin: str) -> dict[str, Any]:
+    """Get a complete install package for a plugin — one call, everything needed.
+
+    Returns all artefacts with:
+    - content_full: verbatim file content (frontmatter + body), write-ready
+    - install_targets: exact paths for claude_local (.claude/) and copilot (.github/)
+    - plugin_tracking: the plugin.json to write to .claude/plugins/ for compliance tracking
+
+    Prefer this over multiple get_entry calls when installing a full plugin.
+    """
+    return get_plugin_install_package_handler(plugin=plugin)
 
 
 def main() -> None:

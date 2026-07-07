@@ -16,12 +16,21 @@ from lab_registry.tools.search import list_entries_handler, search_entries_handl
 # Expected schemas (mirrors RegistryEntry and Plugin model_dump() shapes)
 # ---------------------------------------------------------------------------
 
-ENTRY_REQUIRED_KEYS = {
+# Core keys always present in summary_dump() (list/search operations)
+ENTRY_SUMMARY_KEYS = {
+    "id", "name", "type", "plugin", "plugin_version", "description", "tags",
+}
+
+# All keys present in model_dump() (get_entry "entry" field — full serialization)
+ENTRY_FULL_KEYS = {
     "id", "name", "type", "plugin", "plugin_version",
     "description", "path", "updated_at", "tags",
     "disable_model_invocation", "model", "allowed_tools",
     "context", "agent_skills", "argument_hint", "hook_events",
 }
+
+# Backward-compatible alias used by tests that pre-date the lean serialization
+ENTRY_REQUIRED_KEYS = ENTRY_SUMMARY_KEYS
 
 PLUGIN_MANIFEST_KEYS = {"name", "version", "description", "tags", "author", "plugin_license"}
 
@@ -64,13 +73,13 @@ def test_list_entries_id_format():
 
 
 def test_list_entries_list_fields_are_always_lists():
-    """tags, allowed_tools, agent_skills, hook_events must never be None."""
+    """tags must always be a list; type-specific list fields only when present."""
     result = list_entries_handler()
     for entry in result:
         assert isinstance(entry["tags"], list), f"tags is not list: {entry['id']}"
-        assert isinstance(entry["allowed_tools"], list), f"allowed_tools is not list: {entry['id']}"
-        assert isinstance(entry["agent_skills"], list), f"agent_skills is not list: {entry['id']}"
-        assert isinstance(entry["hook_events"], list), f"hook_events is not list: {entry['id']}"
+        for key in ("allowed_tools", "agent_skills", "hook_events"):
+            if key in entry:
+                assert isinstance(entry[key], list), f"{key} is not list: {entry['id']}"
 
 
 def test_list_entries_filter_type_returns_only_that_type():
@@ -149,14 +158,14 @@ def test_search_entries_type_filter_invalid_type_returns_empty():
 # get_entry contracts
 # ===========================================================================
 
-def test_get_entry_success_has_three_top_level_keys():
+def test_get_entry_success_has_expected_top_level_keys():
     result = get_entry_handler(plugin="test-plugin", type="skill", name="test-skill")
-    assert set(result.keys()) == {"entry", "metadata", "content_raw"}
+    assert {"entry", "metadata", "content_raw", "content_full", "install_targets"} <= set(result.keys())
 
 
 def test_get_entry_entry_has_all_required_keys():
     result = get_entry_handler(plugin="test-plugin", type="skill", name="test-skill")
-    missing = ENTRY_REQUIRED_KEYS - set(result["entry"].keys())
+    missing = ENTRY_FULL_KEYS - set(result["entry"].keys())
     assert missing == set()
 
 
@@ -169,6 +178,21 @@ def test_get_entry_content_raw_is_non_empty_string():
     result = get_entry_handler(plugin="test-plugin", type="skill", name="test-skill")
     assert isinstance(result["content_raw"], str)
     assert len(result["content_raw"]) > 0
+
+
+def test_get_entry_content_full_is_non_empty_string():
+    result = get_entry_handler(plugin="test-plugin", type="skill", name="test-skill")
+    assert isinstance(result["content_full"], str)
+    assert len(result["content_full"]) > 0
+
+
+def test_get_entry_install_targets_has_expected_keys():
+    result = get_entry_handler(plugin="test-plugin", type="skill", name="test-skill")
+    targets = result["install_targets"]
+    assert isinstance(targets, dict)
+    assert "claude_local" in targets
+    assert "copilot" in targets
+    assert "plugin_tracking" in targets
 
 
 def test_get_entry_not_found_returns_only_error_key():

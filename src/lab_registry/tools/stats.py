@@ -32,6 +32,14 @@ def get_marketplace_stats_handler() -> dict[str, Any]:
     dates = [e.updated_at for e in entries if e.updated_at]
     last_updated = max(dates) if dates else None
 
+    # Which plugin was updated most recently
+    last_updated_plugin: str | None = None
+    if last_updated:
+        for e in entries:
+            if e.updated_at == last_updated:
+                last_updated_plugin = e.plugin
+                break
+
     # Plugins without CHANGELOG.md (updated_at is None for all their entries)
     plugins_without_changelog = sorted({
         e.plugin for e in entries
@@ -45,5 +53,6 @@ def get_marketplace_stats_handler() -> dict[str, Any]:
         "by_type": by_type,
         "by_plugin": by_plugin,
         "last_updated": last_updated,
+        "last_updated_plugin": last_updated_plugin,
         "plugins_without_changelog": plugins_without_changelog,
     }
