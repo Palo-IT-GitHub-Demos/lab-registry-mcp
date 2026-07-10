@@ -291,7 +291,7 @@ def test_check_compliance_outdated_item_has_exact_keys():
     ])
     assert len(result["outdated"]) == 1
     item = result["outdated"][0]
-    assert set(item.keys()) == {"name", "type", "plugin", "local_version", "current_version"}
+    assert set(item.keys()) == {"name", "type", "plugin", "local_version", "registry_version"}
 
 
 def test_check_compliance_unknown_item_has_exact_keys():
@@ -322,7 +322,7 @@ def test_check_compliance_outdated_carries_both_versions():
     ])
     item = result["outdated"][0]
     assert item["local_version"] == "0.0.1"
-    assert item["current_version"] == "1.0.0"
+    assert item["registry_version"] == "1.0.0"
 
 
 def test_check_compliance_empty_input_returns_zeros():

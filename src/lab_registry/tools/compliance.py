@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from lab_registry.registry import find_entry
+from lab_registry.registry import find_entry, get_all_entries
 
 
 def check_compliance_handler(entries: list[dict[str, Any]]) -> dict[str, Any]:
@@ -24,7 +24,7 @@ def check_compliance_handler(entries: list[dict[str, Any]]) -> dict[str, Any]:
                 "type": type_,
                 "plugin": plugin,
                 "local_version": local_version,
-                "current_version": registry_entry.plugin_version,
+                "registry_version": registry_entry.plugin_version,
             })
 
     return {
@@ -32,3 +32,19 @@ def check_compliance_handler(entries: list[dict[str, Any]]) -> dict[str, Any]:
         "unknown": unknown,
         "up_to_date_count": len(entries) - len(outdated) - len(unknown),
     }
+
+
+def check_compliance_plugin_handler(plugin: str, local_version: str) -> dict[str, Any]:
+    """Shortcut: check all artefacts of a plugin against a single local version.
+
+    Equivalent to calling get_plugin to list artefacts, then check_compliance
+    with each one at local_version. Returns the same shape as check_compliance.
+    """
+    entries_in_plugin = [
+        {"name": e.name, "type": e.type.value, "plugin": e.plugin, "local_version": local_version}
+        for e in get_all_entries()
+        if e.plugin == plugin
+    ]
+    if not entries_in_plugin:
+        return {"error": f"Plugin '{plugin}' not found in registry"}
+    return check_compliance_handler(entries_in_plugin)

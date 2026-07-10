@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from lab_registry.tools.compliance import check_compliance_handler
+from lab_registry.tools.compliance import check_compliance_handler, check_compliance_plugin_handler
 
 
 def test_up_to_date():
@@ -18,7 +18,7 @@ def test_outdated_version():
     ])
     assert len(result["outdated"]) == 1
     assert result["outdated"][0]["local_version"] == "0.9.0"
-    assert result["outdated"][0]["current_version"] == "1.0.0"
+    assert result["outdated"][0]["registry_version"] == "1.0.0"
     assert result["up_to_date_count"] == 0
 
 
@@ -56,3 +56,28 @@ def test_case_insensitive_type():
     ])
     assert result["up_to_date_count"] == 1
     assert result["unknown"] == []
+
+
+# ===========================================================================
+# check_compliance_plugin tests
+# ===========================================================================
+
+def test_compliance_plugin_all_up_to_date():
+    result = check_compliance_plugin_handler(plugin="test-plugin", local_version="1.0.0")
+    assert result["outdated"] == []
+    assert result["unknown"] == []
+    assert result["up_to_date_count"] > 0
+
+
+def test_compliance_plugin_all_outdated():
+    result = check_compliance_plugin_handler(plugin="test-plugin", local_version="0.5.0")
+    assert len(result["outdated"]) > 0
+    assert result["up_to_date_count"] == 0
+    for item in result["outdated"]:
+        assert item["local_version"] == "0.5.0"
+        assert item["registry_version"] == "1.0.0"
+
+
+def test_compliance_plugin_unknown_plugin():
+    result = check_compliance_plugin_handler(plugin="nonexistent-plugin", local_version="1.0.0")
+    assert "error" in result

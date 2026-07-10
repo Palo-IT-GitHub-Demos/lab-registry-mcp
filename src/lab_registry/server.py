@@ -4,7 +4,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from lab_registry.tools.compliance import check_compliance_handler
+from lab_registry.tools.compliance import check_compliance_handler, check_compliance_plugin_handler
 from lab_registry.tools.fetch import (
     get_changelog_handler,
     get_entry_by_id_handler,
@@ -109,6 +109,26 @@ def check_compliance(entries: list[dict[str, Any]]) -> dict[str, Any]:
     - up_to_date_count: number of entries that match the registry
     """
     return check_compliance_handler(entries=entries)
+
+
+@mcp.tool()
+def check_compliance_plugin(plugin: str, local_version: str) -> dict[str, Any]:
+    """Check all artefacts of a gen-e2 plugin against a single local version.
+
+    Use this when you have a plugin.json with one version field and want to verify
+    the whole plugin in one call, instead of listing artefacts manually and calling
+    check_compliance with each one.
+
+    Typical workflow:
+      1. Read .claude/plugins/<name>/plugin.json → get local version
+      2. Call check_compliance_plugin(plugin=<name>, local_version=<version>)
+
+    Returns the same shape as check_compliance:
+    - outdated: artefacts where local_version != registry version (includes registry_version)
+    - unknown: artefacts not found in the registry
+    - up_to_date_count: number of matching artefacts
+    """
+    return check_compliance_plugin_handler(plugin=plugin, local_version=local_version)
 
 
 @mcp.tool()

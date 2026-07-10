@@ -117,7 +117,7 @@ def test_server_tools_registered():
     tool_names = {t.name for t in tools}
     expected = {
         "list_entries", "search_entries", "get_entry", "get_plugin",
-        "check_compliance", "reload_registry",
+        "check_compliance", "check_compliance_plugin", "reload_registry",
         "list_plugins", "get_entry_by_id", "get_changelog",
         "get_marketplace_stats", "suggest_entries", "validate_entry",
         "get_plugin_install_package",

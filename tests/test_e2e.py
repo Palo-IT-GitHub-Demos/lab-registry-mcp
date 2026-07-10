@@ -176,7 +176,7 @@ async def test_e2e_check_compliance_outdated():
          "plugin": "android", "local_version": "0.0.1"},
     ]})
     assert len(result["outdated"]) == 1
-    assert result["outdated"][0]["current_version"] == "0.1.0"
+    assert result["outdated"][0]["registry_version"] == "0.1.0"
 
 
 @SKIP
