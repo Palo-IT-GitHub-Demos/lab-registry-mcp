@@ -119,8 +119,8 @@ def test_server_tools_registered():
         "list_entries", "search_entries", "get_entry", "get_plugin",
         "check_compliance", "check_compliance_plugin", "reload_registry",
         "list_plugins", "get_entry_by_id", "get_changelog",
-        "get_marketplace_stats", "suggest_entries", "validate_entry",
-        "get_plugin_install_package",
+        "get_marketplace_stats", "suggest_entries", "suggest_plugins",
+        "validate_entry", "get_plugin_install_package",
     }
     assert tool_names == expected, f"Registered tools: {tool_names}"
 

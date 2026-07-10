@@ -13,7 +13,7 @@ from lab_registry.tools.fetch import (
     get_plugin_install_package_handler,
     list_plugins_handler,
 )
-from lab_registry.tools.search import list_entries_handler, search_entries_handler, suggest_entries_handler
+from lab_registry.tools.search import list_entries_handler, search_entries_handler, suggest_entries_handler, suggest_plugins_handler
 from lab_registry.tools.stats import get_marketplace_stats_handler
 from lab_registry.tools.validate import validate_entry_handler
 
@@ -232,6 +232,31 @@ def suggest_entries(
     - limit: max results to return (default 5)
     """
     return suggest_entries_handler(task=task, type=type, limit=limit)
+
+
+@mcp.tool()
+def suggest_plugins(
+    task: str,
+    limit: int = 5,
+) -> list[dict[str, Any]]:
+    """Suggest gen-e2 plugins relevant to a natural language task or project description.
+
+    Use this for plugin-level discovery when the user describes their project or use case
+    and wants to know which plugins are most relevant — before drilling into individual
+    artefacts with suggest_entries.
+
+    Scores plugins by how many task words appear in their name (3x weight),
+    description, and tags. Returns plugins sorted by relevance score.
+
+    Examples:
+    - "I'm building an Android app" → android, delivery, architecture-reviewer
+    - "I need to research and document a technical decision" → research-suite, delivery
+    - "Go microservice with TDD" → go-tdd-orchestrator
+
+    - task: natural language description of the project or need
+    - limit: max results to return (default 5)
+    """
+    return suggest_plugins_handler(task=task, limit=limit)
 
 
 @mcp.tool()

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from lab_registry.tools.search import list_entries_handler, search_entries_handler
+from lab_registry.tools.search import list_entries_handler, search_entries_handler, suggest_plugins_handler
 
 
 def test_list_all():
@@ -60,3 +60,39 @@ def test_search_no_results():
 def test_search_with_type_filter():
     result = search_entries_handler(query="test", type="agent")
     assert all(r["type"] == "agent" for r in result)
+
+
+# ===========================================================================
+# suggest_plugins tests
+# ===========================================================================
+
+def test_suggest_plugins_returns_list():
+    result = suggest_plugins_handler(task="testing mcp")
+    assert isinstance(result, list)
+
+
+def test_suggest_plugins_has_score_and_matched_terms():
+    result = suggest_plugins_handler(task="testing")
+    assert len(result) > 0
+    for row in result:
+        assert "score" in row
+        assert "matched_terms" in row
+        assert isinstance(row["score"], int)
+        assert isinstance(row["matched_terms"], list)
+
+
+def test_suggest_plugins_no_match_returns_empty():
+    result = suggest_plugins_handler(task="zzz-absolutely-no-match-xyz")
+    assert result == []
+
+
+def test_suggest_plugins_respects_limit():
+    result = suggest_plugins_handler(task="testing mcp", limit=1)
+    assert len(result) <= 1
+
+
+def test_suggest_plugins_name_match_scores_higher():
+    """Plugin whose name contains the query should rank first."""
+    result = suggest_plugins_handler(task="test-plugin")
+    assert len(result) > 0
+    assert result[0]["name"] == "test-plugin"
