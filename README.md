@@ -53,11 +53,11 @@ lab-registry-mcp/            ← this repo
   src/lab_registry/
     registry.py              ← reads marketplace on first call, caches result
     models.py                ← RegistryEntry, Plugin (Pydantic)
-    server.py                ← FastMCP, 13 tools registered via @mcp.tool()
+    server.py                ← FastMCP, 15 tools registered via @mcp.tool()
     tools/
-      search.py              ← list_entries, search_entries, suggest_entries
+      search.py              ← list_entries, search_entries, suggest_entries, suggest_plugins
       fetch.py               ← get_entry, get_plugin, get_entry_by_id, list_plugins, get_changelog
-      compliance.py          ← check_compliance
+      compliance.py          ← check_compliance, check_compliance_plugin
       stats.py               ← get_marketplace_stats
       validate.py            ← validate_entry
 ```
@@ -187,7 +187,7 @@ REGISTRY_PATH=../gen-e2-marketplace pytest tests/ -v
 
 ---
 
-## The 13 tools
+## The 15 tools
 
 > **Response shapes:** `list_entries`, `search_entries`, and `suggest_entries` use a lean serialization — only populated fields are returned (no `null` or empty-list noise). `get_entry` always returns the full entry shape.
 
@@ -195,12 +195,14 @@ REGISTRY_PATH=../gen-e2-marketplace pytest tests/ -v
 
 | Goal | Use |
 |---|---|
+| Discover which plugins fit a project type | `suggest_plugins` |
 | Exact keyword or partial name (e.g. `"tdd"`, `"android"`) | `search_entries` |
 | Natural language task description (e.g. `"I need to review architecture"`) | `suggest_entries` |
 | Browse by type or plugin | `list_entries` with filters |
 | Install a full plugin (all artefacts + paths) | `get_plugin_install_package` |
 | Read one specific artefact | `get_entry` or `get_entry_by_id` |
-| Check installed plugins are up to date | discover local `plugin.json` → `check_compliance` |
+| Check installed plugins are up to date (one plugin) | `check_compliance_plugin` |
+| Check installed plugins are up to date (multiple) | discover `plugin.json` → `check_compliance` |
 | See what changed in a plugin | `get_changelog` |
 
 ### `list_entries`
@@ -239,7 +241,7 @@ Keyword search over name, description, and plugin name. Name matches are ranked 
 
 Task-oriented suggestion tool. Splits the task into individual terms and scores entries by how many terms appear in their name, description, plugin name, and tags.
 
-Use for natural language queries. For exact keyword or partial name matching, use `search_entries` instead.
+Use for natural language queries at the **artefact level**. For plugin-level discovery ("which plugins fit my project?"), use `suggest_plugins` instead. For exact keyword matching, use `search_entries`.
 
 | Parameter | Type | Description |
 | --------- | ---- | ----------- |
@@ -250,6 +252,25 @@ Use for natural language queries. For exact keyword or partial name matching, us
 ```json
 { "task": "I need to write tests for a Go service", "type": "skill", "limit": 5 }
 ```
+
+---
+
+### `suggest_plugins`
+
+Plugin-level discovery. Scores plugins by how many task words appear in their name (3× weight), description, and tags.
+
+Use this **before** `suggest_entries` when the user describes their project type and wants to know which plugins are most relevant — rather than listing all 15 plugins flat.
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `task` | `string` | Natural language description of the project or need |
+| `limit` | `integer?` | Maximum number of results (default 5) |
+
+```json
+{ "task": "I'm building an Android app", "limit": 3 }
+```
+
+Example response: `android`, `delivery`, `architecture-reviewer` — each with `score` and `matched_terms`.
 
 ---
 
@@ -353,7 +374,9 @@ Useful for dashboards, summaries, and quick health checks.
 
 Check whether locally installed gen-e2 plugin artefacts are up to date with the registry.
 
-**Recommended workflow:** discover local `plugin.json` files (e.g. `.claude/plugins/*/plugin.json`), read the `version` field from each, then call this tool — do not compare versions manually.
+**For a single plugin**, use `check_compliance_plugin` instead — it requires only the plugin name and local version, without listing artefacts manually.
+
+**Recommended workflow for multiple plugins:** discover local `plugin.json` files, read the `version` field from each, build the `entries` list, then call this tool.
 
 Each item in `entries` must have `name`, `type`, `plugin`, and `local_version`.
 
@@ -380,7 +403,22 @@ Response:
 
 ---
 
-### `validate_entry`
+### `check_compliance_plugin`
+
+Shortcut: check all artefacts of a plugin against a single local version in one call.
+
+Equivalent to calling `get_plugin` to list artefacts, then `check_compliance` with each one. Use this when you have a `plugin.json` with one version field — it removes the need to enumerate artefacts manually.
+
+| Parameter | Type | Description |
+| --------- | ---- | ----------- |
+| `plugin` | `string` | Plugin name |
+| `local_version` | `string` | Version from the local `plugin.json` |
+
+```json
+{ "plugin": "research-suite", "local_version": "0.8.0" }
+```
+
+Returns the same shape as `check_compliance`: `outdated`, `unknown`, `up_to_date_count`.
 
 Validate a skill, agent, or command markdown file structure against the expected schema.
 
@@ -582,10 +620,10 @@ tests/
   test_contract.py         # contract: response shapes for all tools (40 tests)
   test_registry_github.py  # GitHub source mode (mocked HTTP, 16 tests)
   test_integration.py      # real marketplace: IDs, content, handlers (15 tests)
-  test_e2e.py              # full MCP subprocess — all 13 tools (20 tests)
+  test_e2e.py              # full MCP subprocess — all 15 tools (20 tests)
 ```
 
-**179 tests total, 0 failures.**
+**187 tests total, 0 failures.**
 E2E and integration tests are skipped if `REGISTRY_PATH` is not set.
 GitHub tests use fully mocked HTTP — no network access required.
 
