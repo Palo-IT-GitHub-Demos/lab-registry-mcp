@@ -1,0 +1,37 @@
+name: MCP Server Tests
+
+# 1. QUAND : Le déclencheur
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# 2. OÙ : Le serveur
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # 3. QUOI : Les étapes
+    steps:
+      # A. On télécharge ton code sur le serveur
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      # B. On installe Python
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13" 
+          cache: "pip" # Accélère les prochaines exécutions
+
+      # C. On installe ton serveur et ses dépendances (le fameux mode [dev])
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      # D. On lance tes 177 tests
+      - name: Run Pytest
+        run: |
+          pytest tests/ -v
