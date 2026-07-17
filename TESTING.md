@@ -211,6 +211,74 @@ any change to the server or registry.
 
 ---
 
+## Natural-Language Dispatch Tests (optional, local only)
+
+These tests validate that a natural English prompt is correctly routed to the
+right MCP tool and that the resulting JSON-RPC payload sent to the server is
+well-formed.  They require a local **Ollama** instance with **llama3** and a
+valid `REGISTRY_PATH`.
+
+### Prerequisites
+
+| Requirement | Check |
+|---|---|
+| Ollama daemon running | `ollama list` (must return without error) |
+| llama3 model pulled | `ollama list` shows `llama3:latest` |
+| REGISTRY_PATH set | `ls $REGISTRY_PATH/.claude-plugin/marketplace.json` |
+
+```bash
+# Pull the model if not present
+ollama pull llama3
+```
+
+### Running the tests
+
+```bash
+# All NL dispatch tests (requires REGISTRY_PATH + Ollama)
+REGISTRY_PATH=../gen-e2-marketplace pytest tests/test_nl_dispatch.py -v -m nl_dispatch
+
+# Protocol-structure tests only (no Ollama needed, still requires REGISTRY_PATH)
+REGISTRY_PATH=../gen-e2-marketplace pytest tests/test_nl_dispatch.py::TestMCPPayloadStructure -v
+
+# Phase 3 clarity tests only (see diagnostic output via -s)
+REGISTRY_PATH=../gen-e2-marketplace pytest tests/test_nl_dispatch.py::TestToolClarity -v -s -m nl_dispatch
+```
+
+### Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `NL_OLLAMA_URL` | `http://localhost:11434` | Ollama API base URL |
+| `NL_OLLAMA_MODEL` | `llama3` | Model name to use |
+| `NL_OLLAMA_TIMEOUT` | `60` | Per-request timeout in seconds |
+
+### Test categories
+
+| Class | Description | Ollama needed |
+|---|---|---|
+| `TestMCPPayloadStructure` | Protocol shape, id correlation, traffic capture | No |
+| `TestNaturalLanguageDispatch` | English prompts → tool routing + result | Yes |
+| `TestToolClarity` | Ambiguity edge cases between similar tools | Yes |
+
+### Troubleshooting NL tests
+
+**`RuntimeError: Cannot reach Ollama`** — Start the daemon: `ollama serve` in a
+separate terminal or ensure it runs as a background service.
+
+**`Model produced no JSON object`** — The model did not follow the JSON-only
+instruction.  Try increasing `NL_OLLAMA_TIMEOUT` or pulling a more capable model
+(e.g. `ollama pull llama3.1`).
+
+**`Model chose unknown tool`** — The model hallucinated a tool name.  Check the
+raw model output printed with the error; consider refining the system prompt in
+`tests/helpers/mcp_nl_client.py:_build_system_prompt`.
+
+**`Unexpected tool routing`** in Phase 3 tests — This is expected during early
+iterations.  The diagnostic print (`-s` flag) shows which tool was chosen.  Use
+this information to refine the `@mcp.tool()` docstrings in `src/lab_registry/server.py`.
+
+---
+
 ## Troubleshooting
 
 ### "No MCP servers configured" in Claude Code

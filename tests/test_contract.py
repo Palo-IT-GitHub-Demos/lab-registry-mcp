@@ -44,7 +44,7 @@ VALID_TYPES = {"skill", "agent", "command", "hook"}
 def test_list_entries_returns_list():
     result = list_entries_handler()
     assert isinstance(result, list)
-
+    
 
 def test_list_entries_all_entry_keys_present():
     result = list_entries_handler()

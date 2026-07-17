@@ -30,3 +30,6 @@ packages = ["src/lab_registry"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "nl_dispatch: natural-language dispatch tests that require a local Ollama instance and REGISTRY_PATH",
+]
