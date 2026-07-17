@@ -1,0 +1,157 @@
+{
+  "description": "MCP tool routing tests — natural language prompt → expected tool name (null = no tool should fire).",
+  "schema_version": "1",
+  "notes": [
+    "Each test has a prompt (user intent in natural English) and an expected tool name.",
+    "The Copilot workflow reads this file and the @mcp.tool() docstrings in src/lab_registry/server.py,",
+    "then decides the routing WITHOUT looking at 'expected', and compares afterwards.",
+    "'expected': null means the prompt is out of scope for this MCP server entirely.",
+    "When multiple tools could apply, 'expected' names the most specific/correct one."
+  ],
+  "tests": [
+    {
+      "id": 1,
+      "intent": "discovery — all entries",
+      "prompt": "List all entries available in the gen-e2 registry",
+      "expected": "list_entries"
+    },
+    {
+      "id": 2,
+      "intent": "discovery — filter by type",
+      "prompt": "Show me all agents in the registry",
+      "expected": "list_entries"
+    },
+    {
+      "id": 3,
+      "intent": "discovery — filter by plugin",
+      "prompt": "List all skills from the Android plugin",
+      "expected": "list_entries"
+    },
+    {
+      "id": 4,
+      "intent": "discovery — all plugins",
+      "prompt": "What gen-e2 plugins are available?",
+      "expected": "list_plugins"
+    },
+    {
+      "id": 5,
+      "intent": "discovery — overview stats",
+      "prompt": "How many skills, agents, commands and plugins does the gen-e2 marketplace have?",
+      "expected": "get_marketplace_stats"
+    },
+    {
+      "id": 6,
+      "intent": "keyword search — exact term",
+      "prompt": "Find skills or agents about tdd",
+      "expected": "search_entries"
+    },
+    {
+      "id": 7,
+      "intent": "keyword search — partial name",
+      "prompt": "Search for anything with 'architecture' in the name",
+      "expected": "search_entries"
+    },
+    {
+      "id": 8,
+      "intent": "natural language suggestion — entries",
+      "prompt": "I need to review architecture and write ADRs for my project, what should I use?",
+      "expected": "suggest_entries"
+    },
+    {
+      "id": 9,
+      "intent": "natural language suggestion — plugins",
+      "prompt": "I am building a Go microservice and need TDD support. Which gen-e2 plugins are relevant?",
+      "expected": "suggest_plugins"
+    },
+    {
+      "id": 10,
+      "intent": "natural language suggestion — android project",
+      "prompt": "I'm starting a new Android app. Which gen-e2 plugins should I install?",
+      "expected": "suggest_plugins"
+    },
+    {
+      "id": 11,
+      "intent": "fetch specific entry — full content",
+      "prompt": "Get the full content of the android-architecture skill from the android plugin",
+      "expected": "get_entry"
+    },
+    {
+      "id": 12,
+      "intent": "fetch specific entry — by id",
+      "prompt": "Fetch android/skill/android-architecture",
+      "expected": "get_entry_by_id"
+    },
+    {
+      "id": 13,
+      "intent": "fetch plugin — all artefacts",
+      "prompt": "Show me everything in the research-suite plugin",
+      "expected": "get_plugin"
+    },
+    {
+      "id": 14,
+      "intent": "fetch plugin — install",
+      "prompt": "I want to install the delivery plugin into my project",
+      "expected": "get_plugin_install_package"
+    },
+    {
+      "id": 15,
+      "intent": "fetch changelog",
+      "prompt": "What changed in the android plugin between versions?",
+      "expected": "get_changelog"
+    },
+    {
+      "id": 16,
+      "intent": "compliance — check entries",
+      "prompt": "I have android at version 0.1.0 and delivery at version 1.2.0 installed locally. Are they up to date with the registry?",
+      "expected": "check_compliance"
+    },
+    {
+      "id": 17,
+      "intent": "compliance — check full plugin by version",
+      "prompt": "I have the android plugin installed at version 0.1.0. Is it up to date?",
+      "expected": "check_compliance_plugin"
+    },
+    {
+      "id": 18,
+      "intent": "validate — schema check",
+      "prompt": "Validate this skill markdown file against the gen-e2 schema",
+      "expected": "validate_entry"
+    },
+    {
+      "id": 19,
+      "intent": "lifecycle — reload",
+      "prompt": "Reload the registry after the latest marketplace update",
+      "expected": "reload_registry"
+    },
+    {
+      "id": 20,
+      "intent": "fetch specific entry — command type",
+      "prompt": "Get the instructions for the add-screen command in the android plugin",
+      "expected": "get_entry"
+    },
+    {
+      "id": 21,
+      "intent": "anti-trigger — unrelated domain",
+      "prompt": "Deploy my application to production",
+      "expected": null
+    },
+    {
+      "id": 22,
+      "intent": "anti-trigger — unrelated domain",
+      "prompt": "Write me a unit test for my Python function",
+      "expected": null
+    },
+    {
+      "id": 23,
+      "intent": "anti-trigger — general question",
+      "prompt": "What is the weather in Paris today?",
+      "expected": null
+    },
+    {
+      "id": 24,
+      "intent": "anti-trigger — unrelated tooling",
+      "prompt": "Run git commit and push my changes",
+      "expected": null
+    }
+  ]
+}
