@@ -4,15 +4,16 @@ This file tracks only current, actionable items.
 
 ---
 
-## Current status (2026-07-06)
+## Current status (2026-07-20)
 
 - MCP server published on GitHub: `Palo-IT-GitHub-Demos/lab-registry-mcp`
 - Distribution model: GitHub install (`pip install git+https://...`)
-- Tooling status: 12 tools implemented and documented
+- Tooling status: 15 tools implemented and documented
 - Automated tests:
   - `177 passed` with `REGISTRY_PATH` set (integration + E2E enabled)
   - `142 passed, 35 skipped` without local marketplace clone
-- Git tag published: `v0.1.0`
+- Git tag published: `v0.3.0`
+- CI workflow active: GitHub Actions runs pytest on every push/PR to `main`
 
 ---
 
@@ -30,8 +31,7 @@ This file tracks only current, actionable items.
 
 ### 3) Next release
 
-- [ ] Decide whether to keep `v0.1.0` as baseline and publish `v0.1.1` for documentation-only updates
-- [ ] If `v0.1.1` is created: update examples to prefer `@v0.1.1` in install snippets
+- [ ] Évaluer si les prochains changements justifient un `v0.4.0` (nouveaux tools ou changements fonctionnels)
 
 ---
 
@@ -45,7 +45,7 @@ This file tracks only current, actionable items.
 
 ## Tool guidance (identified during prompt testing)
 
-- [ ] **Clarify `search_entries` vs `suggest_entries` in docstrings** — AI clients consistently try `search_entries` first for natural-language queries, which does exact substring match and returns nothing for multi-word phrases. `suggest_entries` (multi-term scoring) is the right tool for natural language. Add a `When to use` note to both docstrings:
+- [x] **Clarify `search_entries` vs `suggest_entries` in docstrings** — AI clients consistently try `search_entries` first for natural-language queries, which does exact substring match and returns nothing for multi-word phrases. `suggest_entries` (multi-term scoring) is the right tool for natural language. Add a `When to use` note to both docstrings:
   - `search_entries`: exact keyword or partial name match (e.g. `"architecture"`, `"tdd"`)
   - `suggest_entries`: natural language task description (e.g. `"I need to review architecture and create ADRs"`)
 

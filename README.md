@@ -81,7 +81,7 @@ lab-registry-mcp/            ← this repo
 pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp"
 
 # Or pin an explicit tag
-pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.2.0"
+pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.3.0"
 ```
 
 For local development:

@@ -10,7 +10,7 @@ pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp"
 Pin a release tag when reproducibility matters:
 
 ```bash
-pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.1.0"
+pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.3.0"
 ```
 
 ---
@@ -69,8 +69,8 @@ Repository already published: `https://github.com/Palo-IT-GitHub-Demos/lab-regis
 Tagged releases are useful when teammates should install a frozen version.
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 The GitHub Actions workflow will:
@@ -82,7 +82,7 @@ The GitHub Actions workflow will:
 Teammates can then install either:
 
 ```bash
-pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.1.0"
+pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.3.0"
 ```
 
 or from `main`:
