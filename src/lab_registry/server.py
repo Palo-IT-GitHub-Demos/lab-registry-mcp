@@ -29,7 +29,11 @@ def list_entries(
     plugin: str | None = None,
     tags: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """List all registry entries.
+    """List registry entries, optionally filtered by type, plugin, or tags.
+
+    Use type="agent" to list agents, type="skill" to list skills,
+    type="command" to list commands, type="hook" to list hooks.
+    Omit all filters to list every entry in the registry.
 
     Filter by:
     - type: "skill", "agent", "command", or "hook"
@@ -64,7 +68,9 @@ def get_entry(
 ) -> dict[str, Any]:
     """Get a specific registry entry with its full content.
 
-    Use this to read a single artefact's documentation or to get its install files.
+    Use this ONLY when you already know the exact plugin, type, AND name of the
+    artefact. If you only have a task description or keyword, use suggest_entries
+    or search_entries instead to discover the right artefact first.
     To get all artefacts of a plugin at once, use get_plugin_install_package instead.
 
     Returns:
@@ -219,13 +225,13 @@ def suggest_entries(
 ) -> list[dict[str, Any]]:
     """Suggest registry entries relevant to a natural language task description.
 
-    Splits the task into individual terms and scores entries by how many terms
-    appear in their name, description, plugin name, and tags. Returns entries
-    ranked by relevance score with matched_terms listed.
+    Use this when you do NOT have a specific artefact name — only a task or intent
+    description. It scores entries by term overlap and returns ranked suggestions.
+    If you already know the exact plugin+type+name, use get_entry instead.
+    For exact keyword or partial name matching, use search_entries instead.
 
-    Use this for natural language queries (e.g. "I need to review architecture and
-    create ADRs", "write tests for a Go service"). For exact keyword or partial name
-    matching, use search_entries instead.
+    Examples: "I need to review architecture and create ADRs",
+    "write tests for a Go service", "build an Android feature with MVVM".
 
     - task: natural language description of what you need
     - type: optional type filter ("skill", "agent", "command", "hook")

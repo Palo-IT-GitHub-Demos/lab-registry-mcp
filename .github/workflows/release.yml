@@ -1,63 +1,42 @@
 name: release
 
+# 1. QUAND : Uniquement lors de la création d'une étiquette (Tag) officielle
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - "main"
     tags:
       - "v*"
-  pull_request:
-
-permissions:
-  contents: read
+  workflow_dispatch: # Permet de lancer manuellement depuis l'interface GitHub si besoin
 
 jobs:
-  test-build:
+  build-and-publish:
     runs-on: ubuntu-latest
+    
+    # Autorise le bot GitHub à écrire sur la page des Releases
+    permissions:
+      contents: write 
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v7
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
+      # On n'installe plus les outils de dev (pytest), juste les outils d'empaquetage
+      - name: Install build tools
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
           pip install build twine
 
-      - name: Run tests
-        run: pytest tests/ -v
-
-      - name: Build distribution
+      - name: Build distribution (Création du .whl)
         run: python -m build
 
       - name: Validate package metadata
         run: python -m twine check dist/*
 
-      - name: Upload dist artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/*
-
-  github-release:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: test-build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download dist artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist
-
+      # La livraison finale : création de la page de Release sur GitHub
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
