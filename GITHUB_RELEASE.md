@@ -10,7 +10,7 @@ pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp"
 Pin a release tag when reproducibility matters:
 
 ```bash
-pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.3.0"
+pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.3.1"
 ```
 
 ---
@@ -67,13 +67,13 @@ Repository already published: `https://github.com/Palo-IT-GitHub-Demos/lab-regis
 
 ## 4) Tagged release
 
-The current package version is `0.3.0` in `pyproject.toml`, with matching tag
-`v0.3.0`. For future releases, bump the package version and push a tag using
+The current package version is `0.3.1` in `pyproject.toml`, with matching tag
+`v0.3.1`. For future releases, bump the package version and push a tag using
 the matching `vX.Y.Z` format; `release.yml` runs tests before building or
 publishing.
 
 ```bash
-pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.3.0"
+pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.3.1"
 ```
 
 The GitHub Actions workflow runs `pytest tests/ -q`, builds the sdist and wheel,

@@ -4,7 +4,7 @@ Last reviewed: 2026-10-13. This file tracks current baseline and genuinely open 
 
 ## Current baseline
 
-- Package version: `0.3.0` (`pyproject.toml`); matching release tag: `v0.3.0`.
+- Package version: `0.3.1` (`pyproject.toml`); matching release tag: `v0.3.1`.
 - MCP tools: 15, including `suggest_plugins` and `get_plugin_install_package`.
 - Default collection: 193 tests (`pytest --collect-only -q`); the NL module is excluded unless explicitly enabled and Ollama is healthy.
 - Without `REGISTRY_PATH`: 158 passed, 36 skipped (15 integration, 20 E2E, and the NL module).
