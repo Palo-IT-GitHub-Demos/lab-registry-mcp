@@ -40,25 +40,31 @@ Expected result: package installs successfully from GitHub and the `lab-registry
 
 Validated on 2026-07-06:
 - Installation succeeded in a local virtual environment after macOS blocked system-wide install (PEP 668).
-- Installed distribution name: `lab-registry-server 0.1.0`
+- Installed distribution at that time: `lab-registry-server 0.1.0` (historical; current version is `0.3.0`).
 - Import check: `python -c "import lab_registry; print('ok')"`
 
 ---
 
 ## Running the Test Suite
 
-### Unit + Integration + E2E (all at once)
+### Three execution levels
 
-```bash
-# Against the real marketplace (recommended)
-REGISTRY_PATH=../gen-e2-marketplace pytest tests/ -v
+With `RUN_NL_TESTS` unset, `pytest --collect-only -q` collects **193 tests**. The
+NL dispatch module is excluded unless `RUN_NL_TESTS=1` and the Ollama health check succeeds.
 
-# Without a local clone (GitHub mock only)
-pytest tests/ -v
-```
+| Level | Setup and command | Measured result |
+| --- | --- | --- |
+| Unit, contract, and mocked GitHub tests | No `REGISTRY_PATH` or `RUN_NL_TESTS`; `pytest tests/ -q` | **158 passed, 36 skipped**. Skips: 15 integration, 20 E2E, and the NL module. |
+| Integration and E2E | `REGISTRY_PATH=../gen-e2-marketplace pytest tests/ -q` | **193 passed, 1 skipped** (NL module). |
+| NL dispatch | `RUN_NL_TESTS=1 REGISTRY_PATH=../gen-e2-marketplace pytest tests/test_nl_dispatch.py -v -m nl_dispatch` | Optional; requires local Ollama and is not included in the default collection count. |
 
-Expected output with `REGISTRY_PATH` set: **177 passed**.
-Expected output without local clone: **142 passed, 35 skipped**.
+The 36 skips in standard mode include 35 individual integration/E2E cases and
+one module-level NL skip; the skipped module adds no test item to the 193 collected tests.
+
+The standard profile makes no external network calls: GitHub source tests use
+mocked HTTP, while integration and E2E tests are skipped without `REGISTRY_PATH`.
+The local-registry profile adds those integration/E2E cases. NL dispatch is
+opt-in and checks `/api/tags` with a 500 ms timeout before collecting tests.
 
 ### By category
 
@@ -80,13 +86,14 @@ REGISTRY_PATH=../gen-e2-marketplace pytest tests/test_e2e.py -v
 ### Coverage table
 
 | File | Scope | Network | Marketplace needed |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `test_contract.py` | Handler response shapes | ✗ | ✗ |
 | `test_registry.py` | Parser + indexer + cache | ✗ | ✗ |
 | `test_tools_*.py` | Tool handlers | ✗ | ✗ |
 | `test_registry_github.py` | GitHub fetcher (mocked) | ✗ | ✗ |
 | `test_integration.py` | Real marketplace data | ✗ | ✓ local clone |
 | `test_e2e.py` | Full MCP subprocess | ✗ | ✓ local clone |
+| `test_nl_dispatch.py` | Prompt routing via Ollama | ✓ local Ollama | ✓ local clone + opt-in |
 
 ---
 
@@ -135,7 +142,7 @@ Expected: `outdated` list with `current_version: 0.1.0`
 **Steps**
 1. Open any terminal directory
 2. Run `claude` to start an interactive session
-3. Type `/mcp` → verify `lab-registry · ✔ connected · 12 tools`
+3. Type `/mcp` → verify `lab-registry · ✔ connected · 15 tools`
 4. Ask:
 
 ```
@@ -148,7 +155,7 @@ Use the lab-registry tool to get the full content of the research skill
 ```
 Expected: structured response with `content_raw`
 
-**Validation date**: 2026-07-06 ✅ — `lab-registry · connected · 12 tools`
+**Historical validation (2026-07-06)**: `lab-registry · connected · 12 tools` at that time; the current server exposes 15 tools.
 
 ---
 
@@ -216,12 +223,14 @@ any change to the server or registry.
 These tests validate that a natural English prompt is correctly routed to the
 right MCP tool and that the resulting JSON-RPC payload sent to the server is
 well-formed.  They require a local **Ollama** instance with **llama3** and a
-valid `REGISTRY_PATH`.
+valid `REGISTRY_PATH`. They are opt-in: set `RUN_NL_TESTS=1`; the module checks
+`/api/tags` with a 500 ms timeout and skips all tests if Ollama is unavailable.
 
 ### Prerequisites
 
 | Requirement | Check |
 |---|---|
+| Explicit opt-in | `RUN_NL_TESTS=1` |
 | Ollama daemon running | `ollama list` (must return without error) |
 | llama3 model pulled | `ollama list` shows `llama3:latest` |
 | REGISTRY_PATH set | `ls $REGISTRY_PATH/.claude-plugin/marketplace.json` |
@@ -234,29 +243,30 @@ ollama pull llama3
 ### Running the tests
 
 ```bash
-# All NL dispatch tests (requires REGISTRY_PATH + Ollama)
-REGISTRY_PATH=../gen-e2-marketplace pytest tests/test_nl_dispatch.py -v -m nl_dispatch
+# All NL dispatch tests (requires RUN_NL_TESTS=1, REGISTRY_PATH + Ollama)
+RUN_NL_TESTS=1 REGISTRY_PATH=../gen-e2-marketplace pytest tests/test_nl_dispatch.py -v -m nl_dispatch
 
-# Protocol-structure tests only (no Ollama needed, still requires REGISTRY_PATH)
-REGISTRY_PATH=../gen-e2-marketplace pytest tests/test_nl_dispatch.py::TestMCPPayloadStructure -v
+# Protocol-structure tests (module still requires opt-in + a healthy Ollama)
+RUN_NL_TESTS=1 REGISTRY_PATH=../gen-e2-marketplace pytest tests/test_nl_dispatch.py::TestMCPPayloadStructure -v
 
 # Phase 3 clarity tests only (see diagnostic output via -s)
-REGISTRY_PATH=../gen-e2-marketplace pytest tests/test_nl_dispatch.py::TestToolClarity -v -s -m nl_dispatch
+RUN_NL_TESTS=1 REGISTRY_PATH=../gen-e2-marketplace pytest tests/test_nl_dispatch.py::TestToolClarity -v -s -m nl_dispatch
 ```
 
 ### Environment variables
 
 | Variable | Default | Description |
 |---|---|---|
+| `RUN_NL_TESTS` | unset | Set to `1` to opt in; otherwise the module is skipped |
 | `NL_OLLAMA_URL` | `http://localhost:11434` | Ollama API base URL |
 | `NL_OLLAMA_MODEL` | `llama3` | Model name to use |
-| `NL_OLLAMA_TIMEOUT` | `60` | Per-request timeout in seconds |
+| `NL_OLLAMA_TIMEOUT` | `120` | Per-request timeout in seconds |
 
 ### Test categories
 
 | Class | Description | Ollama needed |
 |---|---|---|
-| `TestMCPPayloadStructure` | Protocol shape, id correlation, traffic capture | No |
+| `TestMCPPayloadStructure` | Protocol shape, id correlation, traffic capture | Yes — module-level health gate |
 | `TestNaturalLanguageDispatch` | English prompts → tool routing + result | Yes |
 | `TestToolClarity` | Ambiguity edge cases between similar tools | Yes |
 

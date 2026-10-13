@@ -80,8 +80,8 @@ lab-registry-mcp/            ← this repo
 # Install directly from GitHub
 pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp"
 
-# Or pin an explicit tag
-pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.2.0"
+# Or pin the current release tag
+pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.3.1"
 ```
 
 For local development:
@@ -182,7 +182,7 @@ mcp dev src/lab_registry/server.py
 REGISTRY_GITHUB_REPO=owner/repo REGISTRY_GITHUB_TOKEN=ghp_... mcp run src/lab_registry/server.py
 
 # Unit + integration + E2E tests
-REGISTRY_PATH=../gen-e2-marketplace pytest tests/ -v
+REGISTRY_PATH=../gen-e2-marketplace pytest tests/ -q
 ```
 
 ---
@@ -605,27 +605,22 @@ Current state of `gen-e2-marketplace` as indexed:
 
 ## Tests
 
-```
-tests/
-  conftest.py              # session fixture: mock registry with 1 plugin / 4 artefacts
-  test_registry.py         # unit: indexer, parsers, cache (25 tests)
-  test_tools_search.py     # unit: list_entries, search_entries (11 tests)
-  test_tools_fetch.py      # unit: get_entry, get_plugin (8 tests)
-  test_tools_compliance.py # unit: check_compliance (6 tests)
-  test_tools_reload.py     # unit: reload_registry (4 tests)
-  test_tools_new.py        # unit: 7 new tools — list_plugins, get_entry_by_id,
-                           #       get_changelog, get_marketplace_stats,
-                           #       suggest_entries, validate_entry,
-                           #       get_plugin_install_package (38 tests)
-  test_contract.py         # contract: response shapes for all tools (40 tests)
-  test_registry_github.py  # GitHub source mode (mocked HTTP, 16 tests)
-  test_integration.py      # real marketplace: IDs, content, handlers (15 tests)
-  test_e2e.py              # full MCP subprocess — all 15 tools (20 tests)
-```
+With `RUN_NL_TESTS` unset, `pytest --collect-only -q` collects **193 tests**. The NL
+dispatch module is excluded unless `RUN_NL_TESTS=1` and its Ollama health check succeeds.
 
-**187 tests total, 0 failures.**
-E2E and integration tests are skipped if `REGISTRY_PATH` is not set.
-GitHub tests use fully mocked HTTP — no network access required.
+| Test level | Setup | Command | Measured result |
+| --- | --- | --- | --- |
+| Unit, contract, and mocked GitHub | No environment variables | `pytest tests/ -q` | **158 passed, 36 skipped**; integration/E2E and NL are skipped |
+| Integration and E2E | `REGISTRY_PATH` points to a local marketplace | `REGISTRY_PATH=../gen-e2-marketplace pytest tests/ -q` | **193 passed, 1 skipped**; NL module is skipped |
+| NL dispatch | `RUN_NL_TESTS=1`, `REGISTRY_PATH`, and healthy Ollama | `RUN_NL_TESTS=1 REGISTRY_PATH=../gen-e2-marketplace pytest tests/test_nl_dispatch.py -v -m nl_dispatch` | Optional; excluded from the default collection |
+
+The standard summary's 36 skips are 35 individual integration/E2E cases plus one
+module-level NL skip; that module adds no test item to the 193 collected tests.
+
+The standard profile uses a temporary fixture and mocked GitHub HTTP; it does not
+require network access. The local-registry profile adds real marketplace
+integration and MCP subprocess scenarios. NL dispatch uses Ollama only after the
+explicit opt-in and a successful 500 ms `/api/tags` health check.
 
 ---
 

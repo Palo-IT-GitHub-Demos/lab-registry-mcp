@@ -1,72 +1,29 @@
 # TODO — Lab Registry Server
 
-This file tracks only current, actionable items.
+Last reviewed: 2026-10-13. This file tracks current baseline and genuinely open work.
 
----
+## Current baseline
 
-## Current status (2026-07-06)
+- Package version: `0.3.1` (`pyproject.toml`); matching release tag: `v0.3.1`.
+- MCP tools: 15, including `suggest_plugins` and `get_plugin_install_package`.
+- Default collection: 193 tests (`pytest --collect-only -q`); the NL module is excluded unless explicitly enabled and Ollama is healthy.
+- Without `REGISTRY_PATH`: 158 passed, 36 skipped (15 integration, 20 E2E, and the NL module).
+- With the local marketplace snapshot: 193 passed, 1 skipped (the NL module).
+- Measurements above used Python 3.14.6; GitHub Actions covers Python 3.12 and 3.13.
 
-- MCP server published on GitHub: `Palo-IT-GitHub-Demos/lab-registry-mcp`
-- Distribution model: GitHub install (`pip install git+https://...`)
-- Tooling status: 12 tools implemented and documented
-- Automated tests:
-  - `177 passed` with `REGISTRY_PATH` set (integration + E2E enabled)
-  - `142 passed, 35 skipped` without local marketplace clone
-- Git tag published: `v0.1.0`
+## Recently completed
 
----
+- Full-content responses and install targets, including `get_plugin_install_package`.
+- Plugin discovery via `suggest_plugins`; search-vs-suggestion guidance is documented.
+- Hook JSON validation and safe rejection of non-mapping YAML frontmatter.
+- Portable MCP executable resolution and subprocess cleanup in E2E tests.
+- NL dispatch tests gated by `RUN_NL_TESTS=1` and a 500 ms Ollama health check.
+- CI matrix for Python 3.12/3.13 and release tests before packaging.
 
-## Remaining priorities
+## Future improvements
 
-### 1) Clean and modernize docs structure
-
-- [ ] Normalize markdown style in `README.md` (headings/tables/fenced-block spacing)
-- [ ] Keep one source of truth per topic (`README.md` product view, `TESTING.md` validation view, `GITHUB_RELEASE.md` release view)
-
-### 2) Operational hardening
-
-- [ ] Move token usage guidance away from plaintext examples when possible (VS Code MCP `inputs` / keychain)
-- [ ] Add a short troubleshooting note for private repo access approval paths (classic PAT vs fine-grained PAT)
-
-### 3) Next release
-
-- [ ] Decide whether to keep `v0.1.0` as baseline and publish `v0.1.1` for documentation-only updates
-- [ ] If `v0.1.1` is created: update examples to prefer `@v0.1.1` in install snippets
-
----
-
-## Stretch ideas (optional)
-
-- [ ] `get_entry_batch`: fetch multiple entries in one call
-- [ ] `diff_plugin`: structured changelog diff between two plugin versions
-- [ ] `export_snapshot`: full registry JSON export (without `content_raw`)
-
----
-
-## Tool guidance (identified during prompt testing)
-
-- [ ] **Clarify `search_entries` vs `suggest_entries` in docstrings** — AI clients consistently try `search_entries` first for natural-language queries, which does exact substring match and returns nothing for multi-word phrases. `suggest_entries` (multi-term scoring) is the right tool for natural language. Add a `When to use` note to both docstrings:
-  - `search_entries`: exact keyword or partial name match (e.g. `"architecture"`, `"tdd"`)
-  - `suggest_entries`: natural language task description (e.g. `"I need to review architecture and create ADRs"`)
-
-## Future improvements (identified during demo)
-
-### Priority 1 — Content integrity ✅ done
-
-- [x] Add `content_full` to `get_entry` response — verbatim file (frontmatter + body), write-ready. Fixes AI dropping YAML frontmatter when installing skills.
-- [x] `get_entry` and `get_entry_by_id` now return `content_full` alongside the existing `metadata` and `content_raw` fields.
-
-### Priority 2 — Response minimalism ✅ done
-
-- [x] `RegistryEntry.summary_dump()` — lean serialization used by `list_entries`, `search_entries`, `suggest_entries`. Strips null/empty type-specific fields. Core keys always present: `id`, `name`, `type`, `plugin`, `plugin_version`, `description`, `tags`.
-- [x] `get_entry` keeps full `model_dump()` for the `entry` field — two modes: lean for discovery, full for fetch.
-
-### Priority 3 — Installation ergonomics ✅ done
-
-- [x] `install_targets` added to `get_entry` response — computed paths for `claude_local`, `copilot`, and `plugin_tracking` per artefact type.
-- [x] New tool `get_plugin_install_package(plugin)` — returns all artefacts with `content_full` + `install_targets` in one call.
-
-### Priority 4 — Registry freshness ✅ done
-
-- [x] `updated_at` added to `Plugin` model — populated at load time from `CHANGELOG.md`, exposed in `list_plugins`.
-- [x] `last_updated_plugin` added to `get_marketplace_stats` — identifies the most recently updated plugin by name alongside the existing `last_updated` date.
+- [ ] Add optional per-artifact versioning; versions are currently tracked per plugin.
+- [ ] Detect deprecated artifacts when the marketplace format exposes that metadata.
+- [ ] Add incremental cache invalidation for large or frequently updated registries.
+- [ ] Consider `get_entry_batch`, a structured plugin-version diff, and a snapshot export tool.
+- [ ] Replace token examples with client secret-input/keychain guidance and document private-repository approval paths.

@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -17,7 +18,6 @@ import pytest
 
 REGISTRY_PATH = os.environ.get("REGISTRY_PATH", "")
 SERVER_SCRIPT = str(Path(__file__).parent.parent / "src" / "lab_registry" / "server.py")
-MCP_BIN = str(Path(__file__).parent.parent / ".venv" / "bin" / "mcp")
 
 SKIP = pytest.mark.skipif(
     not (REGISTRY_PATH and (Path(REGISTRY_PATH) / ".claude-plugin" / "marketplace.json").exists()),
@@ -25,14 +25,39 @@ SKIP = pytest.mark.skipif(
 )
 
 
+def _resolve_mcp_bin() -> str:
+    """Resolve the MCP CLI from configuration, the active venv, or PATH."""
+    candidates: tuple[str | Path | None, ...] = (
+        os.environ.get("MCP_BIN"),
+        Path(sys.executable).parent / "mcp",
+        shutil.which("mcp"),
+    )
+    for candidate in candidates:
+        if candidate is None:
+            continue
+        executable = shutil.which(str(candidate))
+        if executable is not None:
+            return executable
+
+    pytest.skip("mcp binary not found")
+
+
 async def _call_server(tool: str, args: dict, registry_path: str = REGISTRY_PATH) -> dict | list:
     """Spawn the MCP server and call one tool via stdio JSON-RPC."""
+    mcp_bin = _resolve_mcp_bin()
+    child_env = os.environ.copy()
+    child_env["REGISTRY_PATH"] = registry_path
+    project_src = str(Path(__file__).resolve().parent.parent / "src")
+    existing_pythonpath = child_env.get("PYTHONPATH")
+    child_env["PYTHONPATH"] = os.pathsep.join(
+        path for path in (project_src, existing_pythonpath) if path
+    )
     proc = await asyncio.create_subprocess_exec(
-        MCP_BIN, "run", SERVER_SCRIPT,
+        mcp_bin, "run", SERVER_SCRIPT,
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.DEVNULL,
-        env={**os.environ, "REGISTRY_PATH": registry_path},
+        env=child_env,
         limit=8 * 1024 * 1024,  # 8 MB — large list_entries responses can exceed default 64 KB
     )
 
@@ -42,25 +67,32 @@ async def _call_server(tool: str, args: dict, registry_path: str = REGISTRY_PATH
         await proc.stdin.drain()
 
     async def recv() -> dict:
-        line = await asyncio.wait_for(proc.stdout.readline(), timeout=10.0)
+        # Indexing larger local marketplace snapshots can exceed a short startup timeout.
+        line = await asyncio.wait_for(proc.stdout.readline(), timeout=30.0)
         return json.loads(line)
 
-    # MCP handshake
-    await send({"jsonrpc": "2.0", "id": 1, "method": "initialize",
-                "params": {"protocolVersion": "2024-11-05",
-                           "capabilities": {},
-                           "clientInfo": {"name": "e2e-test", "version": "0.1"}}})
-    await recv()
-    await send({"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}})
+    try:
+        # MCP handshake
+        await send({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                    "params": {"protocolVersion": "2024-11-05",
+                               "capabilities": {},
+                               "clientInfo": {"name": "e2e-test", "version": "0.1"}}})
+        await recv()
+        await send({"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}})
 
-    # Call the tool
-    await send({"jsonrpc": "2.0", "id": 2, "method": "tools/call",
-                "params": {"name": tool, "arguments": args}})
-    raw = await recv()
-
-    proc.stdin.close()
-    proc.kill()
-    await proc.wait()
+        # Call the tool
+        await send({"jsonrpc": "2.0", "id": 2, "method": "tools/call",
+                    "params": {"name": tool, "arguments": args}})
+        raw = await recv()
+    finally:
+        if proc.stdin is not None:
+            proc.stdin.close()
+        if proc.returncode is None:
+            try:
+                proc.kill()
+            except ProcessLookupError:
+                pass
+        await proc.wait()
 
     if "error" in raw:
         raise RuntimeError(f"JSON-RPC error: {raw['error']}")

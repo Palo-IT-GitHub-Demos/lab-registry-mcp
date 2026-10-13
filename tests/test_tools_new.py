@@ -286,3 +286,38 @@ def test_validate_missing_recommended_field_is_warning_not_error():
     result = validate_entry_handler(no_model, "skill")
     assert result["valid"] is True
     assert any("model" in w for w in result["warnings"])
+
+
+@pytest.mark.parametrize("frontmatter_yaml", ["- scalar", "scalar", ""])
+def test_validate_non_mapping_frontmatter_is_rejected(frontmatter_yaml):
+    content = f"---\n{frontmatter_yaml}\n---\nBody.\n"
+
+    result = validate_entry_handler(content, "skill")
+
+    assert result == {
+        "valid": False,
+        "errors": ["Frontmatter must be a YAML dictionary/mapping"],
+        "warnings": [],
+    }
+
+
+def test_validate_hook_invalid_json():
+    result = validate_entry_handler("not valid JSON", "hook")
+
+    assert result["valid"] is False
+    assert result["errors"]
+    assert "JSON" in result["errors"][0]
+
+
+def test_validate_hook_json_must_be_an_object():
+    result = validate_entry_handler('["hook"]', "hook")
+
+    assert result["valid"] is False
+    assert any("JSON object" in error for error in result["errors"])
+
+
+def test_validate_hook_valid_json_object():
+    result = validate_entry_handler('{"hooks": {}}', "hook")
+
+    assert result["valid"] is True
+    assert result["parsed"] == {"hooks": {}}

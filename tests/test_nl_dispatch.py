@@ -3,9 +3,10 @@
 These tests exercise the full cycle:
   English prompt → Ollama llama3 → tool name + arguments → MCP server → result
 
-They are deliberately *optional* and must be run with an explicit marker:
+They are opt-in and require ``RUN_NL_TESTS=1`` as well as a healthy Ollama
+server. Run them explicitly with:
 
-    REGISTRY_PATH=../gen-e2-marketplace pytest tests/test_nl_dispatch.py -v -m nl_dispatch
+    RUN_NL_TESTS=1 REGISTRY_PATH=../gen-e2-marketplace pytest tests/test_nl_dispatch.py -v -m nl_dispatch
 
 Prerequisites
 -------------
@@ -39,6 +40,8 @@ that the docstrings in server.py can be iteratively improved.
 from __future__ import annotations
 
 import os
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -51,6 +54,21 @@ from tests.helpers.mcp_nl_client import MCPNLClient
 # ---------------------------------------------------------------------------
 
 _REGISTRY_PATH = os.environ.get("REGISTRY_PATH", "")
+_OLLAMA_URL = os.environ.get("NL_OLLAMA_URL", "http://localhost:11434").rstrip("/")
+_NL_SKIP_REASON = "Ollama not running or RUN_NL_TESTS not enabled"
+
+
+def _ollama_is_available() -> bool:
+    """Check the local Ollama health endpoint without waiting more than 500 ms."""
+    try:
+        with urllib.request.urlopen(f"{_OLLAMA_URL}/api/tags", timeout=0.5) as response:
+            return 200 <= response.status < 300
+    except (urllib.error.URLError, OSError, TimeoutError):
+        return False
+
+
+if os.environ.get("RUN_NL_TESTS") != "1" or not _ollama_is_available():
+    pytest.skip(_NL_SKIP_REASON, allow_module_level=True)
 
 _SKIP_NL = pytest.mark.skipif(
     not (

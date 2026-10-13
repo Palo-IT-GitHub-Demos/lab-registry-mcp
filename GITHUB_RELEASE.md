@@ -10,7 +10,7 @@ pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp"
 Pin a release tag when reproducibility matters:
 
 ```bash
-pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.1.0"
+pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.3.1"
 ```
 
 ---
@@ -30,7 +30,7 @@ pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.1.0
 
 - [ ] `version` bumped in `pyproject.toml` if needed
 - [ ] `README.md`, `TESTING.md`, and `TODO.md` are up to date
-- [ ] `pytest tests/ -v` passes locally
+- [ ] `pytest tests/ -q` passes locally
 - [ ] `python -m build` succeeds
 - [ ] `python -m twine check dist/*` succeeds
 - [ ] Remote GitHub repo exists and teammates have access
@@ -43,9 +43,10 @@ pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.1.0
 cd lab-registry-mcp
 source .venv/bin/activate
 
-pytest tests/ -v
 rm -rf dist build ./*.egg-info(N)
-python -m pip install --upgrade build twine
+python -m pip install --upgrade pip
+pip install -e ".[dev]" build twine
+pytest tests/ -q
 python -m build
 python -m twine check dist/*
 ```
@@ -64,28 +65,21 @@ Repository already published: `https://github.com/Palo-IT-GitHub-Demos/lab-regis
 
 ---
 
-## 4) Optional tagged release
+## 4) Tagged release
 
-Tagged releases are useful when teammates should install a frozen version.
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-The GitHub Actions workflow will:
-1. run tests,
-2. build sdist + wheel,
-3. run `twine check`,
-4. create a GitHub Release and attach `dist/*` artifacts.
-
-Teammates can then install either:
+The current package version is `0.3.1` in `pyproject.toml`, with matching tag
+`v0.3.1`. For future releases, bump the package version and push a tag using
+the matching `vX.Y.Z` format; `release.yml` runs tests before building or
+publishing.
 
 ```bash
-pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.1.0"
+pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@v0.3.1"
 ```
 
-or from `main`:
+The GitHub Actions workflow runs `pytest tests/ -q`, builds the sdist and wheel,
+runs `twine check`, then creates the GitHub Release and attaches `dist/*`.
+
+Teammates can also install from `main`:
 
 ```bash
 pip install "git+https://github.com/Palo-IT-GitHub-Demos/lab-registry-mcp@main"
